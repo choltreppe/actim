@@ -5,20 +5,10 @@ export tables
 
 
 type
-  EventKind* {.pure.} = enum
-    onclick, oncontextmenu, ondblclick, onkeyup, onkeydown, onkeypressed, onfocus, onblur, onchange, nscroll,
-    onmousedown, onmouseenter, onmouseleave, onmousemove, onmouseout, onmouseover, onmouseup,
-    ondrag, ondragend, ondragenter, ondragleave, ondragover, ondragstart, ondrop,
-    onsubmit, oninput,
-    onanimationstart, onanimationend, onanimationiteration,
-    onkeyupenter, onkeyuplater, onload,
-    ontransitioncancel, ontransitionend, ontransitionrun, ontransitionstart,
-    onwheel
+  EventHandler* = proc(e: Event)
 
-  EventHandler* = proc(e: Event, n: VNode)
-
-  VNodeKind = enum
-    text,
+  VNodeKind* = enum
+    textnode,
 
     section, nav, article, aside,
     h1, h2, h3, h4, h5, h6, hgroup,
@@ -64,13 +54,14 @@ type
     details, summary, command, menu
 
   VNode* = ref object
-    case kind: VNodeKind
-    of text: text: string
+    case kind*: VNodeKind
+    of textnode: text*: string
     else:
-      style: seq[VStyleId]
-      childs: seq[VNode]
-      eventHandlers: Table[EventKind, EventHandler]
-    node: Node
+      style*: seq[VStyleId]
+      attributes*: Table[string, string]
+      childs*: seq[VNode]
+      handlers*: Table[string, EventHandler]
+    node*: Node
 
 const
   selfClosing = {area, br, col, embed, hr, img, input, param, source, track, wbr}
@@ -81,7 +72,7 @@ func `$`*(nodes: seq[VNode], ident = 0): string
 func `$`*(node: VNode, ident = 0): string =
   let identStr = "  ".repeat(ident)
   case node.kind
-  of text:
+  of textnode:
     identStr & node.text & "\n"
   of selfClosing:
     fmt "{identStr}<{node.kind}>\n"
@@ -93,73 +84,114 @@ func `$`*(nodes: seq[VNode], ident = 0): string =
     result &= `$`(node, ident)
 
 func newVNode*(s: string): VNode =
-  VNode(kind: text, text: s)
+  VNode(kind: textnode, text: s)
 
 func newVNode*(
   kind: VNodeKind,
   childs: seq[VNode] = @[],
   style: seq[VStyleId] = @[],
-  handlers = initTable[EventKind, EventHandler]()
+  handlers = initTable[string, EventHandler]()
 ): VNode =
   case kind
-  of text: assert false
+  of textnode: assert false
   else:
     if kind in selfClosing: assert len(childs) == 0
-    result = VNode(kind: kind, childs: childs, style: style, eventHandlers: handlers)
+    result = VNode(kind: kind, childs: childs, style: style, handlers: handlers)
 
 var currVDom, prevVDom: seq[VNode]
 
-template collectNodes*(body: untyped): seq[VNode] =
+template collectVNodes*(body: untyped): seq[VNode] =
   let start = len(currVDom)
   body
+  when not defined(release):
+    for i in start ..< len(currVDom) - 1:
+      assert currVDom[i].kind != textnode or currVDom[i+1].kind != textnode
   let nodes = currVDom[start..^1]
   currVDom.setLen start
   nodes
 
-template newVNodeWith*(kind: VNodeKind, body: untyped): VNode =
+proc redraw*
+
+template newVNodeWith*(vnkind: VNodeKind, body: untyped): VNode =
   block:
-    var style {.inject.}: seq[VStyleId]
-    var handlers {.inject.}: Table[EventKind, EventHandler]
-    newVNode(kind, collectNodes(body), style, handlers)
+    var node {.inject.} = newVNode(vnkind)
+
+    template style(id: VStyleId) =
+      node.style &= id
+
+    macro attr(a,val: untyped) =
+      a.expectKind({nnkIdent, nnkSym})
+      genAst(s = macros.strVal(a), val):
+        node.attributes[s] = val
+
+    macro handle(ekind, ebody: untyped) =
+      ekind.expectKind({nnkIdent, nnkSym})
+      let ekind = macros.strVal(ekind)
+      let event = ident"event"
+      genAst(ekind, ebody, event):
+        node.handlers[ekind] = proc(event: Event) =
+          ebody
+          redraw()
+
+    node.childs = collectVNodes(body)
+    node
+
+proc addVNode*(node: VNode) =
+  currVDom.add node
+
+proc vn*(kind: VNodeKind) =
+  addVNode newVNode(kind)
+
+template vn*(kind: VNodeKind, body: untyped) =
+  addVNode newVNodeWith(kind, body)
 
 
-macro buildVNodeBuildTemplates: untyped =
+#[macro buildVNodeBuildTemplates: untyped =
   result = newStmtList()
-  for kind in getType(VNodeKind)[2..^1]:  # skipping text
-    result.add genAst(kind = ident(kind.strVal)) do:
-      template kind*       = currVDom.add newVNode(kind)
-      template kind*(body) = currVDom.add newVNodeWith(kind, body)
-buildVNodeBuildTemplates()
+  for kindSym in getType(VNodeKind)[2..^1]:  # skipping text
+    let kindStr = kindSym.strVal
+    let procName = ident("new" & (
+        if kindStr == "tdiv": "div"
+        else: kindStr
+      ))
+    result.add genAst(kind = ident(kindStr), procName) do:
+      template procName*       = add(kind)
+      template procName*(body) = add(kind, body)
+buildVNodeBuildTemplates()]#
 
 proc text*(s: string) =
-  currVDom.add newVNode(s)
+  addVNode newVNode(s)
 
-
-proc redraw*
 
 proc renderDom*(root: Node) =
 
-  template withNewNode(vn: VNode, body: untyped): untyped =
-    case vn.kind
-    of text:
-      vn.node = document.createTextNode(vn.text.cstring)
-      body
+  proc updateStyleClasses(vnode: VNode, prevStyle: seq[VStyleId] = @[]) =
+    if vnode.style != prevStyle:
+      vnode.node.class = vnode.style.map(vstyles.className).join(" ")
+
+  proc removeEventListeners(vnode: VNode) =
+    if vnode.kind != textnode:
+      for (kind, handler) in vnode.handlers.pairs:
+        debugEcho "remove listener"
+        vnode.node.removeEventListener(kind.cstring, handler)
+      #clear vnode.handlers
+
+  proc update(currs, prevs: seq[VNode], parent: Node)
+
+  proc newNode(vnode: VNode) =
+    case vnode.kind
+    of textnode:
+      vnode.node = document.createTextNode(vnode.text.cstring)
     else:
-      vn.node = document.createElement(($vn.kind).cstring)
-      vn.node.class = vn.style.map(vstyles.className).join(" ")
-      for (kind, handler) in vn.eventHandlers.pairs:
-        vn.node.addEventListener(
-          ($kind)[2..^1].cstring,
-          (proc: proc(e: Event) =   # capture handler
-            let handler = handler
-            let vnode = vn
-            return proc(e: Event) =
-              handler(e, vnode)
-              redraw()
-          )()
-        )
-      body
-      update(vn.childs, @[], vn.node)
+      vnode.node = document.createElement(($vnode.kind).cstring)
+      vnode.updateStyleClasses()
+      for (a,v) in vnode.attributes.pairs:
+        vnode.node.setAttr(a.cstring, v.cstring)
+      for (kind, handler) in vnode.handlers.pairs:
+        debugEcho "add listener"
+        vnode.node.addEventListener(kind.cstring, handler)
+      update(vnode.childs, @[], vnode.node)
+
 
   proc update(currs, prevs: seq[VNode], parent: Node) =
     let commonLen = min(len(currs), len(prevs))
@@ -167,29 +199,56 @@ proc renderDom*(root: Node) =
     for i in 0 ..< commonLen:
       let curr = currs[i]
       let prev = prevs[i]
+
+      # completly replace node
       if curr.kind != prev.kind:
         debugEcho "diff"
-        withNewNode(curr):
-          parent.insertBefore(curr.node, prev.node)
-          parent.removeChild(prev.node)
+        newNode(curr)
+        parent.insertBefore(curr.node, prev.node)
+        removeEventListeners(prev)
+        parent.removeChild(prev.node)
+
+      # just update node
       else:
         curr.node = prev.node
-        if curr.kind == text:
+
+        if curr.kind == textnode:
           if curr.text != prev.text:
             debugEcho "text diff"
             curr.node.nodeValue = curr.text.cstring
+
         else:
+          curr.updateStyleClasses(prev.style)
+
+          for a in prev.attributes.keys:
+            if a notin curr.attributes:
+              curr.node.setAttr(a.cstring, "")
+          for (a,v) in curr.attributes.pairs:
+            if a notin prev.attributes or prev.attributes[a] != v:
+              curr.node.setAttr(a.cstring, v.cstring)
+
+          for (ekind, handler) in prev.handlers.pairs:
+            if ekind notin curr.handlers or curr.handlers[ekind] != handler:
+              curr.node.removeEventListener(ekind, handler)
+              prev.handlers.del(ekind)
+          for (ekind, handler) in curr.handlers.pairs:
+            if ekind notin prev.handlers:
+              curr.node.addEventListener(ekind, handler)
+
           update(curr.childs, prev.childs, curr.node)
 
+    # add new nodes
     if len(currs) > commonLen:
       for curr in currs[commonLen..^1]:
         debugEcho "new"
-        withNewNode(curr):
-          parent.appendChild(curr.node)
+        newNode(curr)
+        parent.appendChild(curr.node)
 
+    # remove extra nodes
     elif len(prevs) > commonLen:
       for prev in prevs[commonLen..^1]:
         debugEcho "del"
+        removeEventListeners(prev)
         parent.removeChild(prev.node)
 
   debugEcho "render.."
@@ -202,26 +261,18 @@ proc renderDom*(root: Node) =
 type Renderer = object
   buildProc: proc()
   rootNode: Node
-  styleNode: Node
 
 var renderer: Renderer
 
 proc redraw* =
   renderer.buildProc()
-  renderer.styleNode.innerHTML = getDynamicStyles()
+  renderStyles()
   renderDom renderer.rootNode
 
 proc setRenderer*(buildProc: proc(), root: Node = document.body) =
-  let staticStyles = document.createElement("style")
-  staticStyles.innerHTML = getStaticStyles()
-  document.head.appendChild staticStyles
-
-  let dynamicStyles = document.createElement("style")
-  document.head.appendChild dynamicStyles
   renderer = Renderer(
     buildProc: buildProc,
     rootNode: root,
-    styleNode: dynamicStyles
   )
-
+  initVStyles()
   redraw()

@@ -84,7 +84,7 @@ func `*`*(s: Size, f: int): Size =
       )
 
 
-macro genSizeAddSub: untyped =
+macro genSizeAddSub =
   result = newStmtList()
   for opEnum in [opAdd, opSub]:
     let opSym = nnkAccQuoted.newTree(ident($opEnum))
@@ -120,13 +120,21 @@ type
   VStyle = object
     attrs: Table[string, string]
     selectors: Table[string, Table[string, string]]
+    node: Node
 
-# styles will be collected once before render calls to place just once
-# and every render call, additional styles will be collected
 var
-  styles: seq[VStyle] = @[]
-  styleIdBase = 0  # where to start to count when naming class (important for additional styles)
+  currVStyles, prevVStyles: seq[VStyle]
+  vStylesBaseLen = 0  # length the vstyles stack has before render calls
 
+proc initVStyles* = vStylesBaseLen = len(currVStyles)
+
+proc `[]`(styles: seq[VStyle], id: VStyleId): VStyle =
+  styles[int(id)]
+
+proc `[]`(styles: var seq[VStyle], id: VStyleId): var VStyle =
+  styles[int(id)]
+
+func `==`*(a,b: VStyleId): bool {.borrow.}
 
 func toCssIdent(s: string): string =
   for c in s:
@@ -146,38 +154,8 @@ proc setAttr(style: var VStyle, selector,attr,v: string) =
 proc className*(id: VStyleId): string =
   fmt"s{ int(id)}"
 
-proc renderStyles*: string =
-  for (i, style) in styles.pairs:
-    template addDef(attrs: Table[string, string], selector = "") =
-      result &=
-      "." & className(VStyleId(styleIdBase + i)) & selector & "{" &
-      join(collect(
-        for (a, v) in attrs.pairs:
-          a & ":" & v & ";"
-      )) &
-      "}\n"
-    addDef style.attrs
-    for (selector, attrs) in style.selectors.pairs:
-      addDef attrs, ":" & selector
 
-proc getStaticStyles*: string =
-  result = renderStyles()
-  styleIdBase = len(styles)
-  styles = @[]
-
-proc getDynamicStyles*: string =
-  result = renderStyles()
-  styles = @[]
-
-proc `[]`(styles: seq[VStyle], id: VStyleId): VStyle =
-  styles[int(id) - styleIdBase]
-
-proc `[]`(styles: var seq[VStyle], id: VStyleId): var VStyle =
-  styles[int(id) - styleIdBase]
-
-func `==`(a,b: VStyleId): bool {.borrow.}
-
-macro extendStyle*(extends: VStyleId, body: untyped): VStyleId =
+macro extendVStyle*(extends: VStyleId, body: untyped): VStyleId =
   body.expectKind(nnkStmtList)
   var body = body
   while body[0].kind == nnkStmtList: body = body[0]
@@ -219,11 +197,49 @@ macro extendStyle*(extends: VStyleId, body: untyped): VStyleId =
 
   genAst(showAttrValIdent, extends, body, styleVar, result = ident"result"):
     var styleVar =
-      when int(extends) >= 0: styles[extends]
+      if int(extends) >= 0: currVStyles[extends]
       else: VStyle()
     body
-    styles &= styleVar
-    VStyleId(styleIdBase + high(styles))
+    currVStyles &= styleVar
+    VStyleId(high(currVStyles))
 
-template newStyle*(body: untyped): VStyleId =
-  extendStyle(VStyleId(-1), body)
+template newVStyle*(body: untyped): VStyleId =
+  extendVStyle(VStyleId(-1), body)
+
+
+proc renderStyles* =
+  
+  proc addStyle(id: VStyleId, style: var VStyle) =
+    style.node = document.createElement("style")
+    proc addDef(attrs: Table[string, string], selector = "") =
+      style.node.innerHTML &=
+      "." & className(id) & selector & "{" &
+      join(collect(
+        for (a, v) in attrs.pairs:
+          a & ":" & v & ";"
+      )) &
+      "}\n"
+    addDef style.attrs
+    for (selector, attrs) in style.selectors.pairs:
+      addDef attrs, ":" & selector
+    document.head.appendChild(style.node)
+
+  let commonLen = min(len(currVStyles), len(prevVStyles))
+
+  for i in 0 ..< commonLen:
+    var curr = currVStyles[i]
+    var prev = prevVStyles[i]
+    if curr != prev:
+      document.head.removeChild(prev.node)
+      addStyle(VStyleId(i), curr)
+
+  if len(currVStyles) > commonLen:
+    for i in commonLen ..< len(currVStyles):
+      addStyle(VStyleId(i), currVStyles[i])
+
+  if len(prevVStyles) > commonLen:
+    for prev in prevVStyles[commonLen..^1]:
+      document.head.removeChild(prev.node)
+
+  prevVStyles = currVStyles
+  currVStyles.setLen vStylesBaseLen
