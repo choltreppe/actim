@@ -113,6 +113,12 @@ proc buildDom =
 setRenderer buildDom
 ```
 
+### Usefull for more complex components
+Some things that could be usefull for more complex componenets:<br>
+[newVNode](https://choltreppe.github.io/actim/actim/vdom.html#newVNode%2Cstring)
+[newVnodeWith](https://choltreppe.github.io/actim/actim/vdom.html#newVNodeWith.t%2CVNodeKind%2Cuntyped)
+[addVNode](https://choltreppe.github.io/actim/actim/vdom.html#addVNode%2CVNode)
+
 ## Contributions
 Issues and PRs are welcome.
 
