@@ -54,7 +54,7 @@ let textInputStyle = addNewVStyle:
 
 proc drawTextInput*(styles: varargs[VStyleId]) =
   vn input:
-    attr `type`: "text"
+    attr type: "text"
     for s in styles:
       style s
     style textInputStyle
