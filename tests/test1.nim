@@ -2,18 +2,18 @@ import std/[dom]
 import actim
 
 
-let style1 = newVStyle:
+let style1 = addNewVStyle:
   padding 5.px
-  backgroundColor "#44ffaa"
+  backgroundColor {"#44ffaa"}
 
 proc buildDom =
   var testText {.global.} = "hi"
 
   vn tdiv:
-    style: newVStyle:
-      fontWeight "bold"
+    style: addNewVStyle:
+      fontWeight bold
     handle click:
-      debugEcho node
+      debugEcho vnode
       testText = "hey"
     text testText
     vn a:
