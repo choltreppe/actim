@@ -1,0 +1,215 @@
+nimTitle	vdom	actim/vdom.html	module src/actim/vdom		0
+nim	EventHandler	actim/vdom.html#EventHandler	type EventHandler		37
+nim	textnode	actim/vdom.html#textnode	VNodeKind.textnode		39
+nim	section	actim/vdom.html#section	VNodeKind.section		39
+nim	nav	actim/vdom.html#nav	VNodeKind.nav		39
+nim	article	actim/vdom.html#article	VNodeKind.article		39
+nim	aside	actim/vdom.html#aside	VNodeKind.aside		39
+nim	h1	actim/vdom.html#h1	VNodeKind.h1		39
+nim	h2	actim/vdom.html#h2	VNodeKind.h2		39
+nim	h3	actim/vdom.html#h3	VNodeKind.h3		39
+nim	h4	actim/vdom.html#h4	VNodeKind.h4		39
+nim	h5	actim/vdom.html#h5	VNodeKind.h5		39
+nim	h6	actim/vdom.html#h6	VNodeKind.h6		39
+nim	hgroup	actim/vdom.html#hgroup	VNodeKind.hgroup		39
+nim	header	actim/vdom.html#header	VNodeKind.header		39
+nim	footer	actim/vdom.html#footer	VNodeKind.footer		39
+nim	address	actim/vdom.html#address	VNodeKind.address		39
+nim	main	actim/vdom.html#main	VNodeKind.main		39
+nim	p	actim/vdom.html#p	VNodeKind.p		39
+nim	hr	actim/vdom.html#hr	VNodeKind.hr		39
+nim	pre	actim/vdom.html#pre	VNodeKind.pre		39
+nim	blockquote	actim/vdom.html#blockquote	VNodeKind.blockquote		39
+nim	ol	actim/vdom.html#ol	VNodeKind.ol		39
+nim	ul	actim/vdom.html#ul	VNodeKind.ul		39
+nim	li	actim/vdom.html#li	VNodeKind.li		39
+nim	dl	actim/vdom.html#dl	VNodeKind.dl		39
+nim	dt	actim/vdom.html#dt	VNodeKind.dt		39
+nim	dd	actim/vdom.html#dd	VNodeKind.dd		39
+nim	figure	actim/vdom.html#figure	VNodeKind.figure		39
+nim	figcaption	actim/vdom.html#figcaption	VNodeKind.figcaption		39
+nim	tdiv	actim/vdom.html#tdiv	VNodeKind.tdiv		39
+nim	a	actim/vdom.html#a	VNodeKind.a		39
+nim	em	actim/vdom.html#em	VNodeKind.em		39
+nim	strong	actim/vdom.html#strong	VNodeKind.strong		39
+nim	small	actim/vdom.html#small	VNodeKind.small		39
+nim	strikethrough	actim/vdom.html#strikethrough	VNodeKind.strikethrough		39
+nim	cite	actim/vdom.html#cite	VNodeKind.cite		39
+nim	quote	actim/vdom.html#quote	VNodeKind.quote		39
+nim	dfn	actim/vdom.html#dfn	VNodeKind.dfn		39
+nim	abbr	actim/vdom.html#abbr	VNodeKind.abbr		39
+nim	data	actim/vdom.html#data	VNodeKind.data		39
+nim	time	actim/vdom.html#time	VNodeKind.time		39
+nim	code	actim/vdom.html#code	VNodeKind.code		39
+nim	var	actim/vdom.html#var	VNodeKind.var		39
+nim	samp	actim/vdom.html#samp	VNodeKind.samp		39
+nim	kdb	actim/vdom.html#kdb	VNodeKind.kdb		39
+nim	sub	actim/vdom.html#sub	VNodeKind.sub		39
+nim	sup	actim/vdom.html#sup	VNodeKind.sup		39
+nim	italic	actim/vdom.html#italic	VNodeKind.italic		39
+nim	bold	actim/vdom.html#bold	VNodeKind.bold		39
+nim	underlined	actim/vdom.html#underlined	VNodeKind.underlined		39
+nim	mark	actim/vdom.html#mark	VNodeKind.mark		39
+nim	ruby	actim/vdom.html#ruby	VNodeKind.ruby		39
+nim	rt	actim/vdom.html#rt	VNodeKind.rt		39
+nim	rp	actim/vdom.html#rp	VNodeKind.rp		39
+nim	bdi	actim/vdom.html#bdi	VNodeKind.bdi		39
+nim	dbo	actim/vdom.html#dbo	VNodeKind.dbo		39
+nim	span	actim/vdom.html#span	VNodeKind.span		39
+nim	br	actim/vdom.html#br	VNodeKind.br		39
+nim	wbr	actim/vdom.html#wbr	VNodeKind.wbr		39
+nim	ins	actim/vdom.html#ins	VNodeKind.ins		39
+nim	del	actim/vdom.html#del	VNodeKind.del		39
+nim	img	actim/vdom.html#img	VNodeKind.img		39
+nim	iframe	actim/vdom.html#iframe	VNodeKind.iframe		39
+nim	embed	actim/vdom.html#embed	VNodeKind.embed		39
+nim	object	actim/vdom.html#object	VNodeKind.object		39
+nim	param	actim/vdom.html#param	VNodeKind.param		39
+nim	video	actim/vdom.html#video	VNodeKind.video		39
+nim	audio	actim/vdom.html#audio	VNodeKind.audio		39
+nim	source	actim/vdom.html#source	VNodeKind.source		39
+nim	track	actim/vdom.html#track	VNodeKind.track		39
+nim	canvas	actim/vdom.html#canvas	VNodeKind.canvas		39
+nim	map	actim/vdom.html#map	VNodeKind.map		39
+nim	area	actim/vdom.html#area	VNodeKind.area		39
+nim	animate	actim/vdom.html#animate	VNodeKind.animate		39
+nim	animateMotion	actim/vdom.html#animateMotion	VNodeKind.animateMotion		39
+nim	animateTransform	actim/vdom.html#animateTransform	VNodeKind.animateTransform		39
+nim	circle	actim/vdom.html#circle	VNodeKind.circle		39
+nim	clipPath	actim/vdom.html#clipPath	VNodeKind.clipPath		39
+nim	defs	actim/vdom.html#defs	VNodeKind.defs		39
+nim	desc	actim/vdom.html#desc	VNodeKind.desc		39
+nim	discard	actim/vdom.html#discard	VNodeKind.discard		39
+nim	ellipse	actim/vdom.html#ellipse	VNodeKind.ellipse		39
+nim	feBlend	actim/vdom.html#feBlend	VNodeKind.feBlend		39
+nim	feColorMatrix	actim/vdom.html#feColorMatrix	VNodeKind.feColorMatrix		39
+nim	feComponentTransfer	actim/vdom.html#feComponentTransfer	VNodeKind.feComponentTransfer		39
+nim	feComposite	actim/vdom.html#feComposite	VNodeKind.feComposite		39
+nim	feConvolveMatrix	actim/vdom.html#feConvolveMatrix	VNodeKind.feConvolveMatrix		39
+nim	feDiffuseLighting	actim/vdom.html#feDiffuseLighting	VNodeKind.feDiffuseLighting		39
+nim	feDisplacementMap	actim/vdom.html#feDisplacementMap	VNodeKind.feDisplacementMap		39
+nim	feDistantLight	actim/vdom.html#feDistantLight	VNodeKind.feDistantLight		39
+nim	feDropShadow	actim/vdom.html#feDropShadow	VNodeKind.feDropShadow		39
+nim	feFlood	actim/vdom.html#feFlood	VNodeKind.feFlood		39
+nim	feFuncA	actim/vdom.html#feFuncA	VNodeKind.feFuncA		39
+nim	feFuncB	actim/vdom.html#feFuncB	VNodeKind.feFuncB		39
+nim	feFuncG	actim/vdom.html#feFuncG	VNodeKind.feFuncG		39
+nim	feFuncR	actim/vdom.html#feFuncR	VNodeKind.feFuncR		39
+nim	feGaussianBlur	actim/vdom.html#feGaussianBlur	VNodeKind.feGaussianBlur		39
+nim	feImage	actim/vdom.html#feImage	VNodeKind.feImage		39
+nim	feMerge	actim/vdom.html#feMerge	VNodeKind.feMerge		39
+nim	feMergeNode	actim/vdom.html#feMergeNode	VNodeKind.feMergeNode		39
+nim	feMorphology	actim/vdom.html#feMorphology	VNodeKind.feMorphology		39
+nim	feOffset	actim/vdom.html#feOffset	VNodeKind.feOffset		39
+nim	fePointLight	actim/vdom.html#fePointLight	VNodeKind.fePointLight		39
+nim	feSpecularLighting	actim/vdom.html#feSpecularLighting	VNodeKind.feSpecularLighting		39
+nim	feSpotLight	actim/vdom.html#feSpotLight	VNodeKind.feSpotLight		39
+nim	feTile	actim/vdom.html#feTile	VNodeKind.feTile		39
+nim	feTurbulence	actim/vdom.html#feTurbulence	VNodeKind.feTurbulence		39
+nim	filter	actim/vdom.html#filter	VNodeKind.filter		39
+nim	foreignObject	actim/vdom.html#foreignObject	VNodeKind.foreignObject		39
+nim	g	actim/vdom.html#g	VNodeKind.g		39
+nim	image	actim/vdom.html#image	VNodeKind.image		39
+nim	line	actim/vdom.html#line	VNodeKind.line		39
+nim	linearGradient	actim/vdom.html#linearGradient	VNodeKind.linearGradient		39
+nim	marker	actim/vdom.html#marker	VNodeKind.marker		39
+nim	mask	actim/vdom.html#mask	VNodeKind.mask		39
+nim	metadata	actim/vdom.html#metadata	VNodeKind.metadata		39
+nim	mpath	actim/vdom.html#mpath	VNodeKind.mpath		39
+nim	path	actim/vdom.html#path	VNodeKind.path		39
+nim	pattern	actim/vdom.html#pattern	VNodeKind.pattern		39
+nim	polygon	actim/vdom.html#polygon	VNodeKind.polygon		39
+nim	polyline	actim/vdom.html#polyline	VNodeKind.polyline		39
+nim	radialGradient	actim/vdom.html#radialGradient	VNodeKind.radialGradient		39
+nim	rect	actim/vdom.html#rect	VNodeKind.rect		39
+nim	set	actim/vdom.html#set	VNodeKind.set		39
+nim	stop	actim/vdom.html#stop	VNodeKind.stop		39
+nim	svg	actim/vdom.html#svg	VNodeKind.svg		39
+nim	switch	actim/vdom.html#switch	VNodeKind.switch		39
+nim	symbol	actim/vdom.html#symbol	VNodeKind.symbol		39
+nim	stext	actim/vdom.html#stext	VNodeKind.stext		39
+nim	textPath	actim/vdom.html#textPath	VNodeKind.textPath		39
+nim	tspan	actim/vdom.html#tspan	VNodeKind.tspan		39
+nim	unknown	actim/vdom.html#unknown	VNodeKind.unknown		39
+nim	use	actim/vdom.html#use	VNodeKind.use		39
+nim	view	actim/vdom.html#view	VNodeKind.view		39
+nim	maction	actim/vdom.html#maction	VNodeKind.maction		39
+nim	math	actim/vdom.html#math	VNodeKind.math		39
+nim	menclose	actim/vdom.html#menclose	VNodeKind.menclose		39
+nim	merror	actim/vdom.html#merror	VNodeKind.merror		39
+nim	mfenced	actim/vdom.html#mfenced	VNodeKind.mfenced		39
+nim	mfrac	actim/vdom.html#mfrac	VNodeKind.mfrac		39
+nim	mglyph	actim/vdom.html#mglyph	VNodeKind.mglyph		39
+nim	mi	actim/vdom.html#mi	VNodeKind.mi		39
+nim	mlabeledtr	actim/vdom.html#mlabeledtr	VNodeKind.mlabeledtr		39
+nim	mmultiscripts	actim/vdom.html#mmultiscripts	VNodeKind.mmultiscripts		39
+nim	mn	actim/vdom.html#mn	VNodeKind.mn		39
+nim	mo	actim/vdom.html#mo	VNodeKind.mo		39
+nim	mover	actim/vdom.html#mover	VNodeKind.mover		39
+nim	mpadded	actim/vdom.html#mpadded	VNodeKind.mpadded		39
+nim	mphantom	actim/vdom.html#mphantom	VNodeKind.mphantom		39
+nim	mroot	actim/vdom.html#mroot	VNodeKind.mroot		39
+nim	mrow	actim/vdom.html#mrow	VNodeKind.mrow		39
+nim	ms	actim/vdom.html#ms	VNodeKind.ms		39
+nim	mspace	actim/vdom.html#mspace	VNodeKind.mspace		39
+nim	msqrt	actim/vdom.html#msqrt	VNodeKind.msqrt		39
+nim	mstyle	actim/vdom.html#mstyle	VNodeKind.mstyle		39
+nim	msub	actim/vdom.html#msub	VNodeKind.msub		39
+nim	msubsup	actim/vdom.html#msubsup	VNodeKind.msubsup		39
+nim	msup	actim/vdom.html#msup	VNodeKind.msup		39
+nim	mtable	actim/vdom.html#mtable	VNodeKind.mtable		39
+nim	mtd	actim/vdom.html#mtd	VNodeKind.mtd		39
+nim	mtext	actim/vdom.html#mtext	VNodeKind.mtext		39
+nim	mtr	actim/vdom.html#mtr	VNodeKind.mtr		39
+nim	munder	actim/vdom.html#munder	VNodeKind.munder		39
+nim	munderover	actim/vdom.html#munderover	VNodeKind.munderover		39
+nim	semantics	actim/vdom.html#semantics	VNodeKind.semantics		39
+nim	table	actim/vdom.html#table	VNodeKind.table		39
+nim	caption	actim/vdom.html#caption	VNodeKind.caption		39
+nim	colgroup	actim/vdom.html#colgroup	VNodeKind.colgroup		39
+nim	col	actim/vdom.html#col	VNodeKind.col		39
+nim	tbody	actim/vdom.html#tbody	VNodeKind.tbody		39
+nim	thead	actim/vdom.html#thead	VNodeKind.thead		39
+nim	tfoot	actim/vdom.html#tfoot	VNodeKind.tfoot		39
+nim	tr	actim/vdom.html#tr	VNodeKind.tr		39
+nim	td	actim/vdom.html#td	VNodeKind.td		39
+nim	th	actim/vdom.html#th	VNodeKind.th		39
+nim	form	actim/vdom.html#form	VNodeKind.form		39
+nim	fieldset	actim/vdom.html#fieldset	VNodeKind.fieldset		39
+nim	legend	actim/vdom.html#legend	VNodeKind.legend		39
+nim	label	actim/vdom.html#label	VNodeKind.label		39
+nim	input	actim/vdom.html#input	VNodeKind.input		39
+nim	button	actim/vdom.html#button	VNodeKind.button		39
+nim	select	actim/vdom.html#select	VNodeKind.select		39
+nim	datalist	actim/vdom.html#datalist	VNodeKind.datalist		39
+nim	optgroup	actim/vdom.html#optgroup	VNodeKind.optgroup		39
+nim	option	actim/vdom.html#option	VNodeKind.option		39
+nim	textarea	actim/vdom.html#textarea	VNodeKind.textarea		39
+nim	keygen	actim/vdom.html#keygen	VNodeKind.keygen		39
+nim	output	actim/vdom.html#output	VNodeKind.output		39
+nim	progress	actim/vdom.html#progress	VNodeKind.progress		39
+nim	meter	actim/vdom.html#meter	VNodeKind.meter		39
+nim	details	actim/vdom.html#details	VNodeKind.details		39
+nim	summary	actim/vdom.html#summary	VNodeKind.summary		39
+nim	command	actim/vdom.html#command	VNodeKind.command		39
+nim	menu	actim/vdom.html#menu	VNodeKind.menu		39
+nim	VNodeKind	actim/vdom.html#VNodeKind	enum VNodeKind		39
+nim	VNode	actim/vdom.html#VNode	type VNode		85
+nim	`$`	actim/vdom.html#$,VNode,int	proc `$`(node: VNode; ident = 0): string		101
+nim	`$`	actim/vdom.html#$,seq[VNode],int	proc `$`(nodes: seq[VNode]; ident = 0): string		111
+nim	newVNode	actim/vdom.html#newVNode,string	proc newVNode(s: string): VNode		115
+nim	newVNode	actim/vdom.html#newVNode,VNodeKind,seq[VNode],seq[VStyleId]	proc newVNode(kind: VNodeKind; childs: seq[VNode] = @[]; style: seq[VStyleId] = @[];\n         handlers = initTable()): VNode		119
+nim	collectVNodes	actim/vdom.html#collectVNodes.t,untyped	template collectVNodes(body: untyped): seq[VNode]		134
+nim	handle	actim/vdom.html#handle.m,untyped,untyped	macro handle(kind, body: untyped)		150
+nim	style	actim/vdom.html#style.m	macro style(id: VStyleId | seq[VStyleId])		164
+nim	attr	actim/vdom.html#attr.m,untyped,untyped	macro attr(a, val: untyped)		178
+nim	newVNodeWith	actim/vdom.html#newVNodeWith.t,VNodeKind,untyped	template newVNodeWith(vnkind: VNodeKind; body: untyped): VNode		189
+nim	addVNode	actim/vdom.html#addVNode,VNode	proc addVNode(node: VNode)		203
+nim	addVNodes	actim/vdom.html#addVNodes,seq[VNode]	proc addVNodes(node: seq[VNode])		207
+nim	vn	actim/vdom.html#vn,VNodeKind	proc vn(kind: VNodeKind)		211
+nim	vn	actim/vdom.html#vn.t,VNodeKind,untyped	template vn(kind: VNodeKind; body: untyped)		215
+nim	text	actim/vdom.html#text,string	proc text(s: string)		220
+nim	redraw	actim/vdom.html#redraw	proc redraw()		327
+nim	setRenderer	actim/vdom.html#setRenderer,proc),Node	proc setRenderer(buildProc: proc (); root: Node = document.body)		333
+nimgrp	$	actim/vdom.html#$-procs-all	proc		101
+nimgrp	newvnode	actim/vdom.html#newVNode-procs-all	proc		115

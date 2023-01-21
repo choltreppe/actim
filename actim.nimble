@@ -12,5 +12,8 @@ srcDir        = "src"
 requires "nim >= 1.6.4"
 
 
-task test, "":
+task test, "test":
   exec "nim js tests/test1.nim"
+
+task doc, "generate docs":
+  exec "nim doc --project --backend:js --docCmd:skip -o:docs src/actim.nim"
