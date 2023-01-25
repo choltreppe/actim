@@ -1,6 +1,10 @@
 # Actim
 
-Actim is a small, simple web frontend framework.<br>
+Actim is a small, simple web frontend framework.
+
+**This is in early development, so use with caution**
+
+Actim works by simply defining a renderer proc that generates a VNode. This renderer will be called whenever some event occurs. And the DOM will be updated where its needed (dom diffing).
 
 ## Example
 ```nim
@@ -10,35 +14,36 @@ let style1 = addNewVStyle:
   padding 5.px
   backgroundColor {"#44ffaa"}
 
-proc buildDom =
+template repeateCount(n: int, body: untyped): VNode =
+  buildVNode tdiv:
+    for i in 1 .. n:
+      ++ text(i, ":")
+      body
+
+proc buildDom: VNode =
   var testText {.global.} = "foo"
 
-  vn tdiv:
+  buildVNode tdiv:
     style: addNewVStyle:
       fontWeight bold
 
     handle click:
       testText = "ba"
 
-    text testText
+    ++ text testText
 
-    vn a:
+    ++ a:
       attr href: "/"
-      text "ho"
+      ++ text "ho"
 
-  vn tdiv:
-    style style1
-    
-    text "foo"
-    vn br
-    text "ba"
+    ++ br
+
+    +> repeateCount 3:
+      style style1
+      ++ text "foo"
 
 setRenderer buildDom
 ```
-
-It works by simply defining e renderer proc that generates a VDom. This renderer will be called whenever some event occurs. And the DOM will be updated where its needed.<br>
-The way the VDom is constructed is inspired by [fidget](https://github.com/treeform/fidget).<br>
-The VDom is build by adding VNodes to a global stack. Every node that gets added via the `vn` macro opens a new 'scope' on that stack, which gets collected into the childs of that node.
 
 ## Components
 
@@ -52,8 +57,8 @@ let textInputStyle = addNewVStyle:
   color white
   padding {20.px}
 
-proc drawTextInput*(styles: varargs[VStyleId]) =
-  vn input:
+proc drawTextInput*(styles: varargs[VStyleId]): VNode =
+  buildVNode input:
     attr type: "text"
     for s in styles:
       style s
@@ -61,8 +66,8 @@ proc drawTextInput*(styles: varargs[VStyleId]) =
 ```
 
 ```nim
-template drawNav*(body: untyped) =
-  const
+template drawNav*(body: untyped): VNode =
+  let
     navStyle = addNewVStyle:
       backgroundColor {"#bbb"}
       padding {10.px}
@@ -82,8 +87,8 @@ template drawNav*(body: untyped) =
     optionNum = 0
 
   template option(title: static string, onclick: untyped) {.inject.} =
-    vn tdiv:
-      text title
+    ++ tdiv:
+      ++ text title
       if optionNum == select:
         style selectedOptionStyle
       else:
@@ -95,13 +100,13 @@ template drawNav*(body: untyped) =
 
     inc optionNum
 
-  vn tdiv:
+  buildVNode tdiv:
     style navStyle
     body
 
 # use:
 
-proc buildDom =
+proc buildDom: VNode =
   drawNav:
     attr id: "some-nav"
 
@@ -112,12 +117,6 @@ proc buildDom =
 
 setRenderer buildDom
 ```
-
-### Usefull for more complex components
-Some things that could be usefull for more complex componenets:<br>
-[newVNode](https://choltreppe.github.io/actim/actim/vdom.html#newVNode%2Cstring)
-[newVnodeWith](https://choltreppe.github.io/actim/actim/vdom.html#newVNodeWith.t%2CVNodeKind%2Cuntyped)
-[addVNode](https://choltreppe.github.io/actim/actim/vdom.html#addVNode%2CVNode)
 
 ## Contributions
 Issues and PRs are welcome.

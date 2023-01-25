@@ -6,23 +6,34 @@ let style1 = addNewVStyle:
   padding 5.px
   backgroundColor {"#44ffaa"}
 
-proc buildDom =
+template repeateCount(n: int, body: untyped): VNode =
+  buildVNode tdiv:
+    for i in 1 .. n:
+      ++ text(i, ":")
+      body
+
+proc buildDom: VNode =
   var testText {.global.} = "hi"
 
-  vn tdiv:
+  buildVNode tdiv:
     style: addNewVStyle:
       fontWeight bold
     handle click:
       debugEcho vnode
       testText = "hey"
-    text testText
-    vn a:
+
+    ++ text testText
+
+    ++ a:
       attr href: "/"
-      text "ho"
-      vn br
-      text "ha"
-  vn tdiv:
-    style style1
-    text "bla"
+
+      ++ text "ho"
+      ++ br
+      ++ text "ha"
+
+    +> repeateCount(3):
+      ++ bold:
+        ++ text "foo"
+      ++ br
 
 setRenderer buildDom

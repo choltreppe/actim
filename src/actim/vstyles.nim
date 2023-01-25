@@ -4,6 +4,7 @@ The `vstyles` are all collected in a global list, and can be added to `VNode`s o
 To create a vstyle there there are multiple macros/templates (`newVStyle`, `addNewVStyle`, `extendVStyle`, `addExtendVStyle`) that all work with the same DSL for defining styles.
 ]#
 runnableExamples:
+
   let somePadding = 20.px
   let someOtherPadding = (somePadding * 2) + 3.px
   let someColor = "#44ffaa"

@@ -1,30 +1,36 @@
 runnableExamples:
+  
   let style1 = addNewVStyle:
     padding 5.px
     backgroundColor {"#44ffaa"}
 
-  proc buildDom =
+  template repeateCount(n: int, body: untyped): VNode =
+    buildVNode tdiv:
+      for i in 1 .. n:
+        ++ text(i, ":")
+        body
+
+  proc buildDom: VNode =
     var testText {.global.} = "foo"
 
-    vn tdiv:
+    buildVNode tdiv:
       style: addNewVStyle:
         fontWeight bold
 
       handle click:
         testText = "ba"
 
-      text testText
+      ++ text testText
 
-      vn a:
+      ++ a:
         attr href: "/"
-        text "ho"
+        ++ text "ho"
 
-    vn tdiv:
-      style style1
+      ++ br
 
-      text "foo"
-      vn br
-      text "ba"
+      +> repeateCount 3:
+        style style1
+        ++ text "foo"
 
   setRenderer buildDom
 
