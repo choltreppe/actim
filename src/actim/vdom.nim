@@ -227,12 +227,14 @@ macro `+>`*(head, body: untyped) =
 when defined(js):
 
   type Renderer = object
-    buildProc: proc: VNode
+    case routing: bool
+    of true:  buildProcRoute: proc(route: string): VNode
+    of false: buildProc:      proc: VNode
     prevDom: VNode
 
   var renderers: seq[Renderer]
 
-  proc redraw =
+  proc redraw(i: Natural, route: string) =
 
     proc updateStyleClasses(vnode: VNode, prevStyle: seq[VStyleId] = @[]) =
       if true: #vnode.style != prevStyle:
@@ -303,7 +305,6 @@ when defined(js):
 
           update(curr.childs, prev.childs, curr.node)
 
-
     proc update(currs, prevs: seq[VNode], parent: Node) =
       let commonLen = min(len(currs), len(prevs))
 
@@ -323,23 +324,55 @@ when defined(js):
           removeEventListeners(prev)
           parent.removeChild(prev.node)
 
-    for renderer in renderers.mitems:
-      let dom = renderer.buildProc()
-      update(dom, renderer.prevDom, renderer.prevDom.node.parentNode)
-      renderer.prevDom = dom
+
+    let dom =
+      if renderers[i].routing: renderers[i].buildProcRoute(route)
+      else: renderers[i].buildProc()
+    update(dom, renderers[i].prevDom, renderers[i].prevDom.node.parentNode)
+    renderers[i].prevDom = dom
 
     renderStyles()
 
 
-  proc setRenderer*(buildProc: proc: VNode, root: Node = document.getElementById("ROOT")) =
-    ## Set the rendering proc
+  proc getHashPart: string =
+    result = $window.location.hash
+    if len(result) > 0:
+      assert result[0] == '#'
+      result = result[1..^1]
 
+  proc redraw(i: int) =
+    redraw(i, getHashPart())
+
+  proc redraw =
+    let route = getHashPart()
+    for i in 0 ..< len(renderers):
+      redraw(i, route)
+
+
+  proc setRenderer*(buildProc: proc: VNode, root: Node = document.getElementById("ROOT")) =
     renderers &= Renderer(
+      routing: false,
       buildProc: buildProc,
       prevDom: VNode(
         kind: parseEnum[VNodeKind](($root.tagName).toLowerAscii),
         node: root
       )
     )
+    initVStyles()
+    redraw()
+
+  proc setRenderer*(buildProc: proc(route: string): VNode, root: Node = document.getElementById("ROOT")) =
+    renderers &= Renderer(
+      routing: true,
+      buildProcRoute: buildProc,
+      prevDom: VNode(
+        kind: parseEnum[VNodeKind](($root.tagName).toLowerAscii),
+        node: root
+      )
+    )
+    let i = high(renderers)
+    window.addEventListener("hashchange") do (e: Event):
+      redraw(i)
+      
     initVStyles()
     redraw()

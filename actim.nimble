@@ -14,6 +14,7 @@ requires "nim >= 1.6.4"
 
 task test, "test":
   exec "nim js tests/test1.nim"
+  exec "nim js tests/test2.nim"
 
 task gendoc, "generate docs":
   exec "nim doc --project --backend:js --docCmd:skip -o:docs src/actim.nim"

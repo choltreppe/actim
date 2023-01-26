@@ -147,10 +147,14 @@ proc buildDom: VNode =
 setRenderer buildDom
 ```
 
+## Routing
+
+To use routing via the hash part of the url, use a `proc(route: string): VNode` as renderer.<br>
+Take a look at `tests/test2.nim` for a small example.
+
 ## Contributions
 Issues and PRs are welcome.
 
 ## TODO
 - Better documentation (espacially readme)
-- Add routing (with hash part)
 - Add an ajax module
