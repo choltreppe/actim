@@ -1,8 +1,8 @@
+**This is in early development, so use with caution**
+
 # Actim
 
 Actim is a small, simple web frontend framework.
-
-**This is in early development, so use with caution**
 
 Actim works by simply defining a renderer proc that generates a VNode. This renderer will be called whenever some event occurs. And the DOM will be updated where its needed (dom diffing).
 
@@ -44,6 +44,35 @@ proc buildDom: VNode =
 
 setRenderer buildDom
 ```
+
+## Implicit vnode var
+
+In every scope you have access to an implicit `vnode` variable, which is the currently constructed vnode.
+
+So lets look at a short example by rewriting the following code:
+```nim
+buildVNode tdiv:
+  style: addNewVStyle:
+    fontWeight bold
+
+  handle click:
+    echo "click"
+
+  ++ text "foo"
+```
+to
+```nim
+buildVNode tdiv:
+  vnode.style.add: addNewVStyle:
+    fontWeight bold
+
+  vnode.handlers["click"] = proc(e: Event) =
+    echo "click"
+
+  vnode.childs &= text "foo"
+```
+
+In practice this is primarly usefull inside handlers, but maybe there are some other special cases where this comes in handy. If you need that manual access its there.
 
 ## Components
 
