@@ -157,4 +157,4 @@ Issues and PRs are welcome.
 
 ## TODO
 - Better documentation (espacially readme)
-- Add an ajax module
+- complete ajax module

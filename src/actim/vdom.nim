@@ -188,25 +188,24 @@ template extendVNode*(base: VNode, body: untyped): VNode =
     body
     vnode
 
-#[template buildVNodes*(body: untyped): seq[VNode] =
+template buildVNodes*(body: untyped): seq[VNode] =
   block:
-    let vnode: VNode = nil   # to prevent access to some outer vnode
-    var vnodes {.inject.}: seq[VNode]
+    macro handle(kind, hbody: untyped) {.inject, error.} = discard
+    macro style(id: VStyleId|seq[VStyleId]) {.inject, error.} = discard
+    macro attr(a,val: untyped) {.inject, error.} = discard
 
-    template add(vnkind: VNodeKind) {.inject.} =
-      vnodes &= ne
-
+    var vnode {.inject.} = VNode()
     body
-    vnodes]#
-
-template `++`*(vnkind: VNodeKind) {.dirty.} =
-  vnode.childs &= newVNode(vnkind)
-
-template `++`*(vnkind: VNodeKind, body: untyped) {.dirty.} =
-  vnode.childs &= buildVNode(vnkind, body)
+    vnode.childs
 
 template `++`*(vn: VNode | seq[VNode]) {.dirty.} =
   vnode.childs &= vn
+
+template `++`*(vnkind: VNodeKind) {.dirty.} =
+  ++ newVNode(vnkind)
+
+template `++`*(vnkind: VNodeKind, body: untyped) {.dirty.} =
+  ++ buildVNode(vnkind, body)
 
 macro `+>`*(head, body: untyped) =
   ## Add child by calling a proc
@@ -373,6 +372,6 @@ when defined(js):
     let i = high(renderers)
     window.addEventListener("hashchange") do (e: Event):
       redraw(i)
-      
+
     initVStyles()
     redraw()
