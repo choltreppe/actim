@@ -3,18 +3,18 @@ runnableExamples:
   proc buildDom: VNode =
     var testText {.global.} = "foo"
 
-    buildVNode tdiv:
-      handle click:
+    buildVNode "div":
+      handle "click":
         debugEcho vnode
         testText = "ba"
 
       ++ text testText
 
-      ++ tdiv:
+      ++ "div":
         ++ text "bla"
-        ++ br
-        ++ a:
-          attr href: "/"
+        ++ "br"
+        ++ "a":
+          attr "href": "/"
           ++ text "some link"
 
   setRenderer buildDom
@@ -30,84 +30,38 @@ when defined(js):
   proc tagName*(n: Node): cstring {.importjs: "#.tagName", nodecl.}
 else:
   type
-    Node = ref object
-    Event = ref object
+    Node* = ref object
+    Event* = ref object
 
 
 type
   EventHandler* = proc(e: Event)
 
-  VNodeKind* = enum
-    textnode,
-
-    section, nav, article, aside,
-    h1, h2, h3, h4, h5, h6, hgroup,
-    header, footer, address, main,
-
-    p, hr, pre, blockquote, ol, ul, li,
-    dl, dt, dd,
-    figure, figcaption,
-
-    tdiv = "div",
-
-    a, em, strong, small,
-    strikethrough = "s", cite, quote,
-    dfn, abbr, data, time, code, `var` = "var", samp,
-    kdb, sub, sup, italic = "i", bold = "b", underlined = "u",
-    mark, ruby, rt, rp, bdi, dbo, span, br, wbr,
-    ins, del, img, iframe, embed, `object` = "object",
-    param, video, audio, source, track, canvas, map, area,
-
-    # SVG elements, see: https://www.w3.org/TR/SVG2/eltindex.html
-    animate, animateMotion, animateTransform, circle, clipPath, defs, desc,
-    `discard` = "discard", ellipse, feBlend, feColorMatrix, feComponentTransfer,
-    feComposite, feConvolveMatrix, feDiffuseLighting, feDisplacementMap,
-    feDistantLight, feDropShadow, feFlood, feFuncA, feFuncB, feFuncG, feFuncR,
-    feGaussianBlur, feImage, feMerge, feMergeNode, feMorphology, feOffset,
-    fePointLight, feSpecularLighting, feSpotLight, feTile, feTurbulence,
-    filter, foreignObject, g, image, line, linearGradient, marker, mask,
-    metadata, mpath, path, pattern, polygon, polyline, radialGradient, rect,
-    `set` = "set", stop, svg, switch, symbol, stext = "text", textPath, tspan,
-    unknown, use, view,
-
-    maction, math, menclose, merror, mfenced, mfrac, mglyph, mi, mlabeledtr,
-    mmultiscripts, mn, mo, mover, mpadded, mphantom, mroot, mrow, ms, mspace,
-    msqrt, mstyle, msub, msubsup, msup, mtable, mtd, mtext, mtr, munder,
-    munderover, semantics,
-
-    table, caption, colgroup, col, tbody, thead,
-    tfoot, tr, td, th,
-
-    form, fieldset, legend, label, input, button,
-    select, datalist, optgroup, option, textarea,
-    keygen, output, progress, meter,
-    details, summary, command, menu
-
   VNode* = ref object
-    case kind*: VNodeKind
-    of textnode: text*: string
+    case isText*: bool
+    of true: text*: string
     else:
-      style*: seq[VStyleId]
+      tag*: string
+      styles*: seq[VStyle]
+      stylesNode: Node
       attributes*: Table[string, string]
       childs*: seq[VNode]
       handlers*: Table[string, EventHandler]
     node*: Node
-
-const
-  selfClosing = {area, br, col, embed, hr, img, input, param, source, track, wbr}
 
 
 func `$`*(nodes: seq[VNode], ident = 0): string
 
 func `$`*(node: VNode, ident = 0): string =
   let identStr = "  ".repeat(ident)
-  case node.kind
-  of textnode:
+  case node.isText
+  of true:
     identStr & node.text & "\n"
-  of selfClosing:
-    fmt "{identStr}<{node.kind}>\n"
   else:
-    fmt "{identStr}<{node.kind}>\n{`$`(node.childs, ident+1)}{identStr}</{node.kind}>\n"
+    if len(node.childs) == 0:
+      fmt "{identStr}<{node.tag}>\n"
+    else:
+      fmt "{identStr}<{node.tag}>\n{`$`(node.childs, ident+1)}{identStr}</{node.tag}>\n"
 
 func `$`*(nodes: seq[VNode], ident = 0): string =
   for node in nodes:
@@ -115,22 +69,18 @@ func `$`*(nodes: seq[VNode], ident = 0): string =
 
 func text*(s: varargs[string, `$`]): VNode =
   ## Create a new text vnode
-  result = VNode(kind: textnode, text: "")
+  result = VNode(isText: true, text: "")
   for s in s:
     result.text &= s
 
 func newVNode*(
-  kind: VNodeKind,
+  tag: string,
   childs: seq[VNode] = @[],
-  style: seq[VStyleId] = @[],
+  styles: seq[VStyle] = @[],
   handlers = initTable[string, EventHandler]()
 ): VNode =
   ## Create a new vnode
-  case kind
-  of textnode: assert false
-  else:
-    if kind in selfClosing: assert len(childs) == 0
-    result = VNode(kind: kind, childs: childs, style: style, handlers: handlers)
+  result = VNode(isText: false, tag: tag, childs: childs, styles: styles, handlers: handlers)
 
 when defined(js):
 
@@ -140,43 +90,42 @@ when defined(js):
     ## Add event handler to node
     runnableExamples:
       buildVNode input:
-        attr type: "text"
-        handle click:
+        attr "type": "text"
+        handle "click":
           echo vnode.attributes.value
 
-    kind.expectKind({nnkIdent, nnkSym})
     genAst(vnode = ident"vnode", kind = macros.strVal(kind), body, event = ident"event"):
-      vnode.handlers[kind] = proc(event: Event) =
+      vnode.handlers[kind] = proc(e: Event) =
+        preventDefault e
         body
         redraw()
 
-macro style*(id: VStyleId|seq[VStyleId]) =
+macro style*(vstyle: VStyle | seq[VStyle]) =
   ## Add vstyle(s) to node.
   runnableExamples:
-    buildVNode tdiv:
+    buildVNode "div":
       ++ text "foo"
-      style: addNewVStyle:
-        padding 5.px
-        backgroundColor {"#44ffaa"}
+      style: newVStyle:
+        "padding": 5.px
+        "background-color": "#44ffaa"
 
-  genAst(vnode = ident"vnode", id):
-    vnode.style &= id
+  genAst(vnode = ident"vnode", vstyle):
+    vnode.styles &= vstyle
 
 macro attr*(a,val: untyped) =
   ## Set an attribute of node.
   runnableExamples:
-    buildVNode a:
-      attr href: "/"
+    buildVNode "a":
+      attr "href": "/"
       ++ text "home"
 
-  a.expectKind({nnkIdent, nnkSym})
   genAst(vnode = ident"vnode", s = macros.strVal(a), val):
     vnode.attributes[s] = val
 
-template buildVNode*(vnkind: VNodeKind, body: untyped): VNode =
+template buildVNode*(tag: string, body: untyped): VNode =
   ## Build a node with childs/attributes/handlers
   block:
-    var vnode {.inject.} = newVNode(vnkind)
+    var vnode {.inject.} = newVNode(tag)
     body
     vnode
 
@@ -189,9 +138,15 @@ template extendVNode*(base: VNode, body: untyped): VNode =
     vnode
 
 template buildVNodes*(body: untyped): seq[VNode] =
+  runnableExamples:
+    buildVNodes:
+      ++ "b":
+        ++ text "foo"
+      ++ text "ba"
+
   block:
     macro handle(kind, hbody: untyped) {.inject, error.} = discard
-    macro style(id: VStyleId|seq[VStyleId]) {.inject, error.} = discard
+    macro style(id: VStyle | seq[VStyle]) {.inject, error.} = discard
     macro attr(a,val: untyped) {.inject, error.} = discard
 
     var vnode {.inject.} = VNode()
@@ -201,14 +156,27 @@ template buildVNodes*(body: untyped): seq[VNode] =
 template `++`*(vn: VNode | seq[VNode]) {.dirty.} =
   vnode.childs &= vn
 
-template `++`*(vnkind: VNodeKind) {.dirty.} =
-  ++ newVNode(vnkind)
+template `++`*(tag: string) {.dirty.} =
+  ++ newVNode(tag)
 
-template `++`*(vnkind: VNodeKind, body: untyped) {.dirty.} =
-  ++ buildVNode(vnkind, body)
+template `++`*(tag: string, body: untyped) {.dirty.} =
+  ++ buildVNode(tag, body)
 
 macro `+>`*(head, body: untyped) =
   ## Add child by calling a proc
+  runnableExamples:
+    template drawInfoBox(title: string, body: untyped): VNode =
+      buildVNode "div":
+        attr "class": "info-box"
+        ++ "div":
+          attr "class": "title"
+          ++ text title
+        body
+
+    buildVNode "div":
+      +> drawInfoBox "foo":
+        ++ text "lorem ipsum"
+
   let genVnode =
     case head.kind
     of nnkIdent, nnkSym: newCall(head, body)
@@ -230,43 +198,60 @@ when defined(js):
     of true:  buildProcRoute: proc(route: string): VNode
     of false: buildProc:      proc: VNode
     prevDom: VNode
+    rootId: string
 
   var renderers: seq[Renderer]
 
+  type ChangeRootElementIdError* = ref object of CatchableError
+
   proc redraw(i: Natural, route: string) =
 
-    proc updateStyleClasses(vnode: VNode, prevStyle: seq[VStyleId] = @[]) =
-      if true: #vnode.style != prevStyle:
-        vnode.node.class = vnode.style.map(vstyles.className).join(" ")
+    let rootId = renderers[i].rootId
+
+    type NodeId = seq[Natural]
+
+    proc updateStyleClasses(vnode: VNode, prevStyles: seq[VStyle], id: NodeId) =
+      if len(vnode.styles) > 0 and vnode.styles != prevStyles:
+        if vnode.stylesNode == nil:
+          vnode.stylesNode = document.createElement("style")
+          document.head.appendChild(vnode.stylesNode)
+        vnode.stylesNode.innerHtml = ""
+        for style in vnode.styles:
+          vnode.stylesNode.innerHtml &= renderVStyle(style, pathSelector("#"&rootId, id)).cstring
 
     proc removeEventListeners(vnode: VNode) =
-      if vnode.kind != textnode:
-        for (kind, handler) in vnode.handlers.pairs:
-          vnode.node.removeEventListener(kind.cstring, handler)
+      if not vnode.isText:
+        for ekind, handler in vnode.handlers:
+          vnode.node.removeEventListener(ekind.cstring, handler)
 
-    proc update(currs, prevs: seq[VNode], parent: Node)
+    proc update(currs, prevs: seq[VNode], parent: Node, id: NodeId)
 
-    proc newNode(vnode: VNode) =
-      case vnode.kind
-      of textnode:
+    proc newNode(vnode: VNode, id: NodeId) =
+      if vnode.isText:
         vnode.node = document.createTextNode(vnode.text.cstring)
       else:
-        vnode.node = document.createElement(($vnode.kind).cstring)
-        vnode.updateStyleClasses()
-        for (a,v) in vnode.attributes.pairs:
-          vnode.node.setAttr(a.cstring, v.cstring)
+        vnode.node = document.createElement(vnode.tag.cstring)
+        vnode.updateStyleClasses(@[], id)
+        for attr, val in vnode.attributes:
+          vnode.node.setAttr(attr.cstring, val.cstring)
         if "value" in vnode.attributes:
           vnode.node.value = vnode.attributes["value"].cstring
-        for (kind, handler) in vnode.handlers.pairs:
-          vnode.node.addEventListener(kind.cstring, handler)
-        update(vnode.childs, @[], vnode.node)
+        for ekind, handler in vnode.handlers:
+          vnode.node.addEventListener(ekind.cstring, handler)
+        update(vnode.childs, @[], vnode.node, id)
 
 
-    proc update(curr, prev: VNode, parent: Node) =
+    proc update(curr, prev: VNode, parent: Node, id: NodeId, isRoot = false) =
+
+      # keep root nodes id
+      if isRoot:
+        if "id" in curr.attributes and curr.attributes["id"] != rootId:
+          raise ChangeRootElementIdError(msg: "trying to change id of root element")
+        curr.attributes["id"] = rootId
 
       # completly replace node
-      if curr.kind != prev.kind:
-        newNode(curr)
+      if (curr.isText xor prev.isText) or (not curr.isText and curr.tag != prev.tag):
+        newNode(curr, id)
         parent.insertBefore(curr.node, prev.node)
         removeEventListeners(prev)
         parent.removeChild(prev.node)
@@ -275,12 +260,13 @@ when defined(js):
       else:
         curr.node = prev.node
 
-        if curr.kind == textnode:
+        if curr.isText:
           if curr.text != prev.text:
             curr.node.nodeValue = curr.text.cstring
 
         else:
-          curr.updateStyleClasses(prev.style)
+          curr.stylesNode = prev.stylesNode
+          curr.updateStyleClasses(prev.styles, id)
 
           for a in prev.attributes.keys:
             if a notin curr.attributes:
@@ -302,20 +288,24 @@ when defined(js):
             if ekind notin prev.handlers:
               curr.node.addEventListener(ekind, handler)
 
-          update(curr.childs, prev.childs, curr.node)
+          update(curr.childs, prev.childs, curr.node, id)
 
-    proc update(currs, prevs: seq[VNode], parent: Node) =
+    proc update(currs, prevs: seq[VNode], parent: Node, id: NodeId) =
+      var id = id & 0
+
       let commonLen = min(len(currs), len(prevs))
 
       # update nodes
       for i in 0 ..< commonLen:
-        update(currs[i], prevs[i], parent)
+        update(currs[i], prevs[i], parent, id)
+        inc id[^1]
 
       # add new nodes
       if len(currs) > commonLen:
         for curr in currs[commonLen..^1]:
-          newNode(curr)
+          newNode(curr, id)
           parent.appendChild(curr.node)
+          inc id[^1]
 
       # remove extra nodes
       elif len(prevs) > commonLen:
@@ -323,14 +313,11 @@ when defined(js):
           removeEventListeners(prev)
           parent.removeChild(prev.node)
 
-
     let dom =
       if renderers[i].routing: renderers[i].buildProcRoute(route)
       else: renderers[i].buildProc()
-    update(dom, renderers[i].prevDom, renderers[i].prevDom.node.parentNode)
+    update(dom, renderers[i].prevDom, renderers[i].prevDom.node.parentNode, @[], true)
     renderers[i].prevDom = dom
-
-    renderStyles()
 
 
   proc getHashPart: string =
@@ -338,6 +325,7 @@ when defined(js):
     if len(result) > 0:
       assert result[0] == '#'
       result = result[1..^1]
+
 
   proc redraw(i: int) =
     redraw(i, getHashPart())
@@ -348,30 +336,31 @@ when defined(js):
       redraw(i, route)
 
 
-  proc setRenderer*(buildProc: proc: VNode, root: Node = document.getElementById("ROOT")) =
+  proc newRootNode(rootId: string): VNode =
+    result = VNode(
+      isText: false,
+      node: document.getElementById(rootId)
+    )
+    result.tag = ($result.node.tagName).toLowerAscii
+
+  proc setRenderer*(buildProc: proc: VNode, rootId = "ROOT") =
     renderers &= Renderer(
       routing: false,
       buildProc: buildProc,
-      prevDom: VNode(
-        kind: parseEnum[VNodeKind](($root.tagName).toLowerAscii),
-        node: root
-      )
+      prevDom: newRootNode(rootId),
+      rootId: rootId
     )
-    initVStyles()
     redraw()
 
-  proc setRenderer*(buildProc: proc(route: string): VNode, root: Node = document.getElementById("ROOT")) =
+  proc setRenderer*(buildProc: proc(route: string): VNode, rootId = "ROOT") =
     renderers &= Renderer(
       routing: true,
       buildProcRoute: buildProc,
-      prevDom: VNode(
-        kind: parseEnum[VNodeKind](($root.tagName).toLowerAscii),
-        node: root
-      )
+      prevDom: newRootNode(rootId),
+      rootId: rootId
     )
     let i = high(renderers)
     window.addEventListener("hashchange") do (e: Event):
       redraw(i)
 
-    initVStyles()
     redraw()

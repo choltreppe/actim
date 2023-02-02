@@ -3,11 +3,11 @@ import actim
 
 proc buildDom(route: string): VNode =
 
-  buildVNode tdiv:
+  buildVNode "div":
     ++ text("route: ", route)
-    ++ br
-    ++ a:
-      attr href: "#bla"
+    ++ "br"
+    ++ "a":
+      attr "href": "#bla"
       ++ text "click me"
 
 setRenderer buildDom

@@ -9,27 +9,22 @@ runnableExamples:
   let someOtherPadding = (somePadding * 2) + 3.px
   let someColor = "#44ffaa"
 
-  let someStyleId = addNewVStyle:
-    height {10 * somePadding}
-    width {40.pct}
-    padding {somePadding}, {someOtherPadding}
-    fontWeight bold
-    @:hover:
-      backgroundColor {someColor}
+  let someStyleId = newVStyle:
+    "height": 10 * somePadding
+    "width": 40.pct
+    "padding": fmt"{somePadding} {someOtherPadding}"
+    "font-weight": "bold"
+    ++ ":hover":
+      "background-color": someColor
 
   let someBaseStyle = newVStyle:
-    width {50.pct}
+    "width": 50.pct
 
-  let someOtherStyleId = addExtendVStyle someBaseStyle:
-    height {50.pct}
+  let someOtherStyleId = extendVStyle someBaseStyle:
+    "height": 50.pct
 
 
 import std/[macros, genasts, sugar, sequtils, strutils, strformat, sets, tables]
-
-when defined(js):
-  import std/dom
-else:
-  type Node = ref object
 
 
 type
@@ -145,34 +140,10 @@ template `-`*(s: Size): Size = s * -1
 
 
 type
-  VStyleId* = distinct int
   VAttrs = OrderedTable[string, string]
-  VStyle* = object
-    attrs*: VAttrs
-    selectors*: Table[string, VAttrs]
-    node: Node
-
-var
-  currVStyles, prevVStyles: seq[VStyle]
-  vStylesBaseLen = 0  # length the vstyles stack has before render calls
-
-proc initVStyles* =
-  ## Initialise vstyles
-  ## **Note**: This is called automatically by the `setRenderer` proc.
-  vStylesBaseLen = len(currVStyles)
+  VStyle* = OrderedTable[string, VAttrs]
 
 func newVAttrs: VAttrs = initOrderedTable[string, string]()
-
-#proc `[]`(styles: seq[VStyle], id: VStyleId): VStyle =
-#  styles[int(id)]
-
-proc `[]`(styles: var seq[VStyle], id: VStyleId): var VStyle =
-  styles[int(id)]
-
-func `==`*(a,b: VStyleId): bool {.borrow.}
-
-func `==`*(a,b: VStyle): bool =
-  a.attrs == b.attrs and a.selectors == b.selectors
 
 func toCssIdent(s: string): string =
   for c in s:
@@ -181,41 +152,15 @@ func toCssIdent(s: string): string =
       elif c.isUpperASCII: fmt"-{c.toLowerASCII}"
       else: $c
 
-proc setAttr(style: var VStyle, attr,v: string) =
-  style.attrs[attr.toCssIdent] = v
-
 proc setAttr(style: var VStyle, selector,attr,v: string) =
-  if selector notin style.selectors:
-    style.selectors[selector] = newVAttrs()
-  style.selectors[selector][attr.toCssIdent] = v
-
-proc className*(id: VStyleId): string =
-  ## **Note**: The `vdom` module uses this for rendering, you shouldn't need to call this yourself in most cases.
-  fmt"s{int(id)}"
-
-
-proc addVStyle*(style: VStyle): VStyleId =
-  ## Add a vstyle to the list of vstyles, to be able to apply it to elements
-  runnableExamples:
-    let style = newVStyle:
-      fontWeight bold
-
-    let styleId = addVStyle(style)
-
-  currVStyles &= style
-  VStyleId(high(currVStyles))
-
-proc getVStyle*(id: VStyleId): VStyle =
-  ## Get the style definition from global vstyle list.
-  currVStyles[id]
-
-proc mgetVStyle*(id: VStyleId): var VStyle =
-  ## Get a mutable style definition from global vstyle list.
-  currVStyles[id]
+  if selector notin style:
+    style[selector] = newVAttrs()
+  style[selector][attr.toCssIdent] = v
 
 
 macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
   ## Extend a vstyle.
+  ## uses the same syntax as `newVStyle <#newVStyle.t,untyped>`_
 
   body.expectKind(nnkStmtList)
   var body = body
@@ -235,33 +180,24 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
       case stmnt.kind
       of nnkPrefix:
         stmnt.expectLen(3)
-        assert stmnt[0].strVal == "@:"
+        debugEcho stmnt[0].kind
+        assert $stmnt[0] == "++"
         stmnt[2].expectKind(nnkStmtList)
-        transformBody stmnt[2], stmnt[1].strVal
+        transformBody stmnt[2], selector & stmnt[1].strVal
         body[i] = stmnt[2]
+
       of nnkForStmt:
         transformBody stmnt[^1], selector
         body[i] = stmnt
+
       of nnkIfStmt:
         for branch in stmnt: transformBody branch[^1], selector
         body[i] = stmnt
+
       else:
-        stmnt.expectKind({nnkCall, nnkCommand})
-        let attrName = if stmnt[0].kind == nnkIdent: newLit(stmnt[0].strVal)
-                       else: stmnt[0]
-        var showAttrCall = newCall(showAttrValIdent)
-        for arg in stmnt[1..^1]:
-          showAttrCall.add:
-            case arg.kind
-            of nnkIdent, nnkSym: newLit(toCssIdent(arg.strVal))
-            of nnkStrLit: newLit("\"" & arg.strVal & "\"")
-            of nnkCurly:
-              arg.expectLen(1)
-              arg[0]
-            else: arg 
-        body[i] =
-          if selector == "": newCall(bindSym"setAttr", styleVar, attrName, showAttrCall)
-          else:              newCall(bindSym"setAttr", styleVar, newLit(selector), attrName, showAttrCall)
+        stmnt.expectKind(nnkCall)
+        stmnt.expectLen(2)
+        body[i] = newCall(bindSym"setAttr", styleVar, newLit(selector), stmnt[0], prefix(stmnt[1], "$"))
 
   transformBody body
 
@@ -270,29 +206,15 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
     body
     styleVar
 
-template extendVStyle*(extendsId: VStyleId, body: untyped): VStyle =
-  ## Extend a vstyle.
-  ## **Note**: This template is mostly usefull for styles that serve soley as base classes. If you want to use the style on elements you probably want to use `addExtendVStyle <#addExtendVStyle>`_
-  extendVStyle(getVStyle(extendsId), body)
-
 template newVStyle*(body: untyped): VStyle =
   ## Create a vstyle.
-  ## **Note**: This template is mostly usefull for styles that serve soley as base classes. If you want to use the style on elements you probably want to use `addExtendVStyle <#addExtendVStyle>`_
   runnableExamples:
     let style = newVStyle:
-      padding {5.px}, {5.px * 2}
-      backgroundColor {"#44ffaa"}
-      fontWeight bold
+      "padding": fmt"{5.px} {5.px * 2}"
+      "background-color": "#44ffaa"
+      "font-weight": "bold"
 
   extendVStyle(VStyle(), body)
-
-template addExtendVStyle*(extends: VStyle|VStyleId, body: untyped): VStyleId =
-  ## Extend a vstyle and add it to the list
-  addVStyle(extendVStyle(extends, body))
-
-template addNewVStyle*(body: untyped): VStyleId =
-  ## Create a vstyle and add it to the list
-  addVStyle(newVStyle(body))
 
 proc merge(a,b: VAttrs): VAttrs =
   result = a
@@ -302,75 +224,30 @@ proc merge(a,b: VAttrs): VAttrs =
 proc merge*(a,b: VStyle): VStyle =
   ## Merge 2 style defenitions.
   ## If an attribute is defined in `a` and `b`, the value of `b` is used.
-  result.attrs = merge(a.attrs, b.attrs)
-  for (k, v) in a.selectors.pairs:
-    result.selectors[k] =
-      if k in b.selectors: merge(v, b.selectors[k])
+  for k, v in a:
+    result[k] =
+      if k in b: merge(v, b[k])
       else: v
-  for (k, v) in b.selectors.pairs:
-    if k notin result.selectors:
-      result.selectors[k] = v
-
-proc merge*(a,b: VStyleId): VStyle =
-  merge(getVStyle(a), getVStyle(b))
-
-proc addMerge*[T: VStyle|VStyleId](a,b: T): VStyleId =
-  ## Merge 2 vstyles and add them to the vstyle list.
-  addVStyle(merge(a, b))
+  for k, v in b:
+    if k notin result:
+      result[k] = v
 
 
-when defined(js):
+type EmptyStyleSelectorError* = ref object of CatchableError
 
-  proc renderStyles* =
-    ## Update style defenitions in the DOM.
-    ## **Note**: The `vdom` module uses this for rendering, you shouldn't need to call this yourself in most cases.
+func renderVStyle*(style: VStyle, baseSelector = ""): string =
+    for selector, attrs in style:
+      if baseSelector == "" and selector == "":
+        raise EmptyStyleSelectorError(msg: "trying to render style with empty selector")
+      result &= baseSelector & selector & "{"
+      for attr, val in attrs:
+        result &= attr & ": " & val & "; "
+      result &= "}\n"
 
-    proc setStyle(i: int) =
-      proc addDef(attrs: VAttrs, selector = "") =
-        currVStyles[i].node.innerHTML &=
-        "." & className(VStyleId(i)) & selector & "{" &
-        join(collect(
-          for (a, v) in attrs.pairs:
-            a & ":" & v & ";"
-        )) &
-        "}\n"
-      currVStyles[i].node.innerHTML = ""
-      addDef currVStyles[i].attrs
-      for (selector, attrs) in currVStyles[i].selectors.pairs:
-        addDef attrs, ":" & selector
-    
-    proc updateStyle(i: int) =
-      if currVStyles[i] != prevVStyles[i]: setStyle(i)
-
-    proc newStyle(i: int) =
-      currVStyles[i].node = document.createElement("style")
-      setStyle(i)
-      document.head.appendChild(currVStyles[i].node)
-
-    proc removeStyle(i: int) =
-      document.head.removeChild(prevVStyles[i].node)
-      prevVStyles[i].node = nil
-
-    if len(prevVStyles) == 0:
-      for i in 0 ..< vStylesBaseLen: newStyle(i)
-    else:
-      for i in 0 ..< vStylesBaseLen: updateStyle(i)
-
-    let commonLen = min(len(currVStyles), len(prevVStyles))
-
-    for i in vStylesBaseLen ..< commonLen:
-      let curr = currVStyles[i]
-      let prev = prevVStyles[i]
-      currVStyles[i].node = prev.node
-      updateStyle(i)
-
-    if len(currVStyles) > commonLen:
-      for i in commonLen ..< len(currVStyles):
-        newStyle(i)
-
-    if len(prevVStyles) > commonLen:
-      for i in commonLen ..< len(prevVStyles):
-        removeStyle(i)
-
-    prevVStyles = currVStyles
-    currVStyles.setLen vStylesBaseLen
+func pathSelector*(baseId: string, pos: openarray[Natural]): string =
+  assert baseId != ""
+  result = baseId
+  for pos in pos:
+    result &= " > *:first-child"
+    for _ in 0 ..< pos:
+      result &= " + *"

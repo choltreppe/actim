@@ -1,13 +1,16 @@
-import std/[dom]
+import std/[dom, strformat, tables]
 import actim
 
 
-let style1 = addNewVStyle:
-  padding 5.px
-  backgroundColor {"#44ffaa"}
+let style1 = newVStyle:
+  "padding": fmt"{6.px} {8.px}"
+  "padding-top": 5.px
+  "background-color": "#44ffaa"
+
+echo renderVStyle(style1, pathSelector("bla", [1.Natural, 2, 0]))
 
 template repeateCount(n: int, body: untyped): VNode =
-  buildVNode tdiv:
+  buildVNode "div":
     for i in 1 .. n:
       ++ text(i, ":")
       body
@@ -15,25 +18,26 @@ template repeateCount(n: int, body: untyped): VNode =
 proc buildDom: VNode =
   var testText {.global.} = "hi"
 
-  buildVNode tdiv:
-    style: addNewVStyle:
-      fontWeight bold
-    handle click:
+  buildVNode "div":
+    style: newVStyle:
+      "font-weight": "bold"
+
+    handle "click":
       debugEcho vnode
       testText = "hey"
 
     ++ text testText
 
-    ++ a:
-      attr href: "/"
+    ++ "a":
+      attr "href": "/"
 
       ++ text "ho"
-      ++ br
+      ++ "br"
       ++ text "ha"
 
     +> repeateCount(3):
-      ++ bold:
+      ++ "b":
         ++ text "foo"
-      ++ br
+      ++ "br"
 
 setRenderer buildDom

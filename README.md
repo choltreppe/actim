@@ -10,12 +10,12 @@ Actim works by simply defining a renderer proc that generates a VNode. This rend
 ```nim
 import actim
 
-let style1 = addNewVStyle:
-  padding 5.px
-  backgroundColor {"#44ffaa"}
+let style1 = newVStyle:
+  "padding": 5.px
+  "background-color": "#44ffaa"
 
 template repeateCount(n: int, body: untyped): VNode =
-  buildVNode tdiv:
+  buildVNode "div":
     for i in 1 .. n:
       ++ text(i, ":")
       body
@@ -23,20 +23,20 @@ template repeateCount(n: int, body: untyped): VNode =
 proc buildDom: VNode =
   var testText {.global.} = "foo"
 
-  buildVNode tdiv:
-    style: addNewVStyle:
-      fontWeight bold
+  buildVNode "div":
+    style: newVStyle:
+      "font-weight": "bold"
 
-    handle click:
+    handle "click":
       testText = "ba"
 
     ++ text testText
 
-    ++ a:
-      attr href: "/"
+    ++ "a":
+      attr "href": "/"
       ++ text "ho"
 
-    ++ br
+    ++ "br"
 
     +> repeateCount 3:
       style style1
@@ -51,20 +51,20 @@ In every scope you have access to an implicit `vnode` variable, which is the cur
 
 So lets look at a short example by rewriting the following code:
 ```nim
-buildVNode tdiv:
-  style: addNewVStyle:
-    fontWeight bold
+buildVNode "div":
+  style: newVStyle:
+    "font-weight": "bold"
 
-  handle click:
+  handle "click":
     echo "click"
 
   ++ text "foo"
 ```
 to
 ```nim
-buildVNode tdiv:
-  vnode.style.add: addNewVStyle:
-    fontWeight bold
+buildVNode "div":
+  vnode.styles.add: newVStyle:
+    "font-weight": "bold"
 
   vnode.handlers["click"] = proc(e: Event) =
     echo "click"
@@ -81,14 +81,14 @@ Defining components is really simple. Just write a proc/template/macro that gene
 ### Examples
 
 ```nim
-let textInputStyle = addNewVStyle:
-  backgroundColor {"#444"}
-  color white
-  padding {20.px}
+let textInputStyle = newVStyle:
+  "background-color": "#444"
+  "color": "white"
+  "padding": 20.px
 
-proc drawTextInput*(styles: varargs[VStyleId]): VNode =
-  buildVNode input:
-    attr type: "text"
+proc drawTextInput*(styles: varargs[VStyle]): VNode =
+  buildVNode "input":
+    attr "type": "text"
     for s in styles:
       style s
     style textInputStyle
@@ -97,39 +97,39 @@ proc drawTextInput*(styles: varargs[VStyleId]): VNode =
 ```nim
 template drawNav*(body: untyped): VNode =
   let
-    navStyle = addNewVStyle:
-      backgroundColor {"#bbb"}
-      padding {10.px}
+    navStyle = newVStyle:
+      "background-color": "#bbb"
+      "padding": 10.px
 
     optionStyleBase = newVStyle:
-      padding {5.px}
+      "padding": 5.px
 
-    optionStyle = addExtendVStyle optionStyleBase:
-      color {"#333"}
+    optionStyle = extendVStyle optionStyleBase:
+      "color": "#333"
 
-    selectedOptionStyle = addExtendVStyle optionStyleBase:
-      color white
-      backgroundColor black
+    selectedOptionStyle = extendVStyle optionStyleBase:
+      "color": "white"
+      "background-color": "black"
 
   var 
     select {.global.} = 0
     optionNum = 0
 
   template option(title: static string, onclick: untyped) {.inject.} =
-    ++ tdiv:
+    ++ "div":
       ++ text title
       if optionNum == select:
         style selectedOptionStyle
       else:
         style optionStyle
         let n = optionNum
-        handle click:
+        handle "click":
           select = n
           onclick
 
     inc optionNum
 
-  buildVNode tdiv:
+  buildVNode "div":
     style navStyle
     body
 
@@ -137,7 +137,6 @@ template drawNav*(body: untyped): VNode =
 
 proc buildDom: VNode =
   drawNav:
-    attr id: "some-nav"
 
     option "foo":
       echo "clicked"

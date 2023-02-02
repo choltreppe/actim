@@ -1,39 +1,24 @@
-nimTitle	vstyles	actim/vstyles.html	module src/actim/vstyles		0
-nim	Size	actim/vstyles.html#Size	type Size		38
-nim	`$`	actim/vstyles.html#$,Size	proc `$`(s: Size): string		48
-nim	px	actim/vstyles.html#px	proc px(v: int | float): Size		89
-nim	em	actim/vstyles.html#em	proc em(v: int | float): Size		89
-nim	pct	actim/vstyles.html#pct	proc pct(v: int | float): Size		89
-nim	vw	actim/vstyles.html#vw	proc vw(v: int | float): Size		89
-nim	vh	actim/vstyles.html#vh	proc vh(v: int | float): Size		89
-nim	vmin	actim/vstyles.html#vmin	proc vmin(v: int | float): Size		89
-nim	vmax	actim/vstyles.html#vmax	proc vmax(v: int | float): Size		68
-nim	`*`	actim/vstyles.html#*,Size,float	proc `*`(s: Size; f: float): Size		80
-nim	`*`	actim/vstyles.html#*.t,,Size	template `*`(f: int | float; s: Size): Size		89
-nim	`/`	actim/vstyles.html#/,Size,	proc `/`(s: Size; f: int | float): Size		80
-nim	`/`	actim/vstyles.html#/.t,,Size	template `/`(f: int | float; s: Size): Size		89
-nim	`*`	actim/vstyles.html#*,Size,int	proc `*`(s: Size; f: int): Size		98
-nim	`+`	actim/vstyles.html#+,Size,Size	proc `+`(a, b: Size): Size		89
-nim	`-`	actim/vstyles.html#-,Size,Size	proc `-`(a, b: Size): Size		142
-nim	`-`	actim/vstyles.html#-.t,Size	template `-`(s: Size): Size		144
-nim	VStyleId	actim/vstyles.html#VStyleId	type VStyleId		148
-nim	VStyle	actim/vstyles.html#VStyle	object VStyle		150
-nim	initVStyles	actim/vstyles.html#initVStyles	proc initVStyles()		159
-nim	`==`	actim/vstyles.html#==,VStyleId,VStyleId	proc `==`(a, b: VStyleId): bool		172
-nim	`==`	actim/vstyles.html#==,VStyle,VStyle	proc `==`(a, b: VStyle): bool		174
-nim	className	actim/vstyles.html#className,VStyleId	proc className(id: VStyleId): string		192
-nim	addVStyle	actim/vstyles.html#addVStyle,VStyle	proc addVStyle(style: VStyle): VStyleId		197
-nim	getVStyle	actim/vstyles.html#getVStyle,VStyleId	proc getVStyle(id: VStyleId): VStyle		208
-nim	mgetVStyle	actim/vstyles.html#mgetVStyle,VStyleId	proc mgetVStyle(id: VStyleId): var VStyle		212
-nim	extendVStyle	actim/vstyles.html#extendVStyle.m,VStyle,untyped	macro extendVStyle(extends: VStyle; body: untyped): VStyle		217
-nim	extendVStyle	actim/vstyles.html#extendVStyle.t,VStyleId,untyped	template extendVStyle(extendsId: VStyleId; body: untyped): VStyle		273
-nim	newVStyle	actim/vstyles.html#newVStyle.t,untyped	template newVStyle(body: untyped): VStyle		278
-nim	addExtendVStyle	actim/vstyles.html#addExtendVStyle.t,,untyped	template addExtendVStyle(extends: VStyle | VStyleId; body: untyped): VStyleId		289
-nim	addNewVStyle	actim/vstyles.html#addNewVStyle.t,untyped	template addNewVStyle(body: untyped): VStyleId		293
-nim	merge	actim/vstyles.html#merge,VStyle,VStyle	proc merge(a, b: VStyle): VStyle		302
-nim	merge	actim/vstyles.html#merge,VStyleId,VStyleId	proc merge(a, b: VStyleId): VStyle		314
-nim	addMerge	actim/vstyles.html#addMerge,T,T	proc addMerge[T: VStyle | VStyleId](a, b: T): VStyleId		317
-nim	renderStyles	actim/vstyles.html#renderStyles	proc renderStyles()		324
-nimgrp	*	actim/vstyles.html#*-procs-all	proc		89
-nimgrp	merge	actim/vstyles.html#merge-procs-all	proc		302
-nimgrp	==	actim/vstyles.html#==-procs-all	proc		172
+Size	actim/vstyles.html#Size	vstyles: Size	
+`$`	actim/vstyles.html#$,Size	vstyles: `$`(s: Size): string	
+px	actim/vstyles.html#px	vstyles: px(v: int | float): Size	
+em	actim/vstyles.html#em	vstyles: em(v: int | float): Size	
+pct	actim/vstyles.html#pct	vstyles: pct(v: int | float): Size	
+vw	actim/vstyles.html#vw	vstyles: vw(v: int | float): Size	
+vh	actim/vstyles.html#vh	vstyles: vh(v: int | float): Size	
+vmin	actim/vstyles.html#vmin	vstyles: vmin(v: int | float): Size	
+vmax	actim/vstyles.html#vmax	vstyles: vmax(v: int | float): Size	
+`*`	actim/vstyles.html#*,Size,float	vstyles: `*`(s: Size; f: float): Size	
+`*`	actim/vstyles.html#*.t,,Size	vstyles: `*`(f: int | float; s: Size): Size	
+`/`	actim/vstyles.html#/,Size,	vstyles: `/`(s: Size; f: int | float): Size	
+`/`	actim/vstyles.html#/.t,,Size	vstyles: `/`(f: int | float; s: Size): Size	
+`*`	actim/vstyles.html#*,Size,int	vstyles: `*`(s: Size; f: int): Size	
+`+`	actim/vstyles.html#+,Size,Size	vstyles: `+`(a, b: Size): Size	
+`-`	actim/vstyles.html#-,Size,Size	vstyles: `-`(a, b: Size): Size	
+`-`	actim/vstyles.html#-.t,Size	vstyles: `-`(s: Size): Size	
+VStyle	actim/vstyles.html#VStyle	vstyles: VStyle	
+extendVStyle	actim/vstyles.html#extendVStyle.m,VStyle,untyped	vstyles: extendVStyle(extends: VStyle; body: untyped): VStyle	
+newVStyle	actim/vstyles.html#newVStyle.t,untyped	vstyles: newVStyle(body: untyped): VStyle	
+merge	actim/vstyles.html#merge,VStyle,VStyle	vstyles: merge(a, b: VStyle): VStyle	
+EmptyStyleSelectorError	actim/vstyles.html#EmptyStyleSelectorError	vstyles: EmptyStyleSelectorError	
+renderVStyle	actim/vstyles.html#renderVStyle,VStyle,string	vstyles: renderVStyle(style: VStyle; baseSelector = &quot;&quot;): string	
+pathSelector	actim/vstyles.html#pathSelector,string,openArray[Natural]	vstyles: pathSelector(baseId: string; pos: openArray[Natural]): string	
