@@ -245,7 +245,7 @@ when defined(js):
 
     proc removeNode(vnode: VNode, parent: Node) =
       parent.removeChild(vnode.node)
-      if vnode.stylesNode != nil:
+      if not vnode.isText and vnode.stylesNode != nil:
         document.head.removeChild(vnode.stylesNode)
 
 
