@@ -112,6 +112,9 @@ macro style*(vstyle: VStyle | seq[VStyle]) =
   genAst(vnode = ident"vnode", vstyle):
     vnode.styles &= vstyle
 
+template style*(body: untyped) =
+  style newVStyle(body)
+
 macro attr*(a,val: untyped) =
   ## Set an attribute of node.
   runnableExamples:
@@ -210,7 +213,7 @@ when defined(js):
 
     type NodeId = seq[Natural]
 
-    proc updateStyleClasses(vnode: VNode, prevStyles: seq[VStyle], id: NodeId) =
+    proc updateStyles(vnode: VNode, prevStyles: seq[VStyle], id: NodeId) =
       if len(vnode.styles) > 0 and vnode.styles != prevStyles:
         if vnode.stylesNode == nil:
           vnode.stylesNode = document.createElement("style")
@@ -231,7 +234,7 @@ when defined(js):
         vnode.node = document.createTextNode(vnode.text.cstring)
       else:
         vnode.node = document.createElement(vnode.tag.cstring)
-        vnode.updateStyleClasses(@[], id)
+        vnode.updateStyles(@[], id)
         for attr, val in vnode.attributes:
           vnode.node.setAttr(attr.cstring, val.cstring)
         if "value" in vnode.attributes:
@@ -239,6 +242,11 @@ when defined(js):
         for ekind, handler in vnode.handlers:
           vnode.node.addEventListener(ekind.cstring, handler)
         update(vnode.childs, @[], vnode.node, id)
+
+    proc removeNode(vnode: VNode, parent: Node) =
+      parent.removeChild(vnode.node)
+      if vnode.stylesNode != nil:
+        document.head.removeChild(vnode.stylesNode)
 
 
     proc update(curr, prev: VNode, parent: Node, id: NodeId, isRoot = false) =
@@ -254,7 +262,7 @@ when defined(js):
         newNode(curr, id)
         parent.insertBefore(curr.node, prev.node)
         removeEventListeners(prev)
-        parent.removeChild(prev.node)
+        removeNode(prev, parent)
 
       # just update node
       else:
@@ -266,7 +274,7 @@ when defined(js):
 
         else:
           curr.stylesNode = prev.stylesNode
-          curr.updateStyleClasses(prev.styles, id)
+          curr.updateStyles(prev.styles, id)
 
           for a in prev.attributes.keys:
             if a notin curr.attributes:
@@ -311,7 +319,7 @@ when defined(js):
       elif len(prevs) > commonLen:
         for prev in prevs[commonLen..^1]:
           removeEventListeners(prev)
-          parent.removeChild(prev.node)
+          removeNode(prev, parent)
 
     let dom =
       if renderers[i].routing: renderers[i].buildProcRoute(route)
