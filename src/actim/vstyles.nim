@@ -243,11 +243,3 @@ func renderVStyle*(style: VStyle, baseSelector = ""): string =
       for attr, val in attrs:
         result &= attr & ": " & val & "; "
       result &= "}\n"
-
-func pathSelector*(baseId: string, pos: openarray[Natural]): string =
-  assert baseId != ""
-  result = baseId
-  for pos in pos:
-    result &= " > *:first-child"
-    for _ in 0 ..< pos:
-      result &= " + *"

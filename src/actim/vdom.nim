@@ -43,11 +43,9 @@ type
     else:
       tag*: string
       styles*: seq[VStyle]
-      stylesNode: Node
       attributes*: Table[string, string]
       childs*: seq[VNode]
       handlers*: Table[string, EventHandler]
-    node*: Node
 
 
 func `$`*(nodes: seq[VNode], ident = 0): string
@@ -56,12 +54,14 @@ func `$`*(node: VNode, ident = 0): string =
   let identStr = "  ".repeat(ident)
   case node.isText
   of true:
-    identStr & node.text & "\n"
+    result = identStr & node.text & "\n"
   else:
-    if len(node.childs) == 0:
-      fmt "{identStr}<{node.tag}>\n"
-    else:
-      fmt "{identStr}<{node.tag}>\n{`$`(node.childs, ident+1)}{identStr}</{node.tag}>\n"
+    var attrStr = ""
+    for attr, val in node.attributes:
+      attrStr &= fmt " {attr}=\"{val}\""
+    result = fmt "{identStr}<{node.tag}{attrStr}>\n"
+    if len(node.childs) > 0:
+      result &= fmt "{`$`(node.childs, ident+1)}{identStr}</{node.tag}>\n"
 
 func `$`*(nodes: seq[VNode], ident = 0): string =
   for node in nodes:
@@ -95,8 +95,8 @@ when defined(js):
           echo vnode.attributes.value
 
     genAst(vnode = ident"vnode", kind = macros.strVal(kind), body, event = ident"event"):
-      vnode.handlers[kind] = proc(e: Event) =
-        preventDefault e
+      vnode.handlers[kind] = proc(event: Event) =
+        preventDefault event
         body
         redraw()
 
@@ -156,8 +156,15 @@ template buildVNodes*(body: untyped): seq[VNode] =
     body
     vnode.childs
 
-template `++`*(vn: VNode | seq[VNode]) {.dirty.} =
-  vnode.childs &= vn
+template `++`*(vn: VNode) {.dirty.} =
+  if vn.isText and len(vnode.childs) > 0 and vnode.childs[^1].isText:
+    vnode.childs[^1].text &= vn.text
+  else:
+    vnode.childs &= vn
+
+template `++`*(vns: seq[VNode]) {.dirty.} =
+  for vn in vns:
+    ++ vn
 
 template `++`*(tag: string) {.dirty.} =
   ++ newVNode(tag)
@@ -195,136 +202,132 @@ macro `+>`*(head, body: untyped) =
 
 
 when defined(js):
+  proc unsafeEcho[T](v: T) {.importjs: "console.log(#)".}
 
   type Renderer = object
     case routing: bool
     of true:  buildProcRoute: proc(route: string): VNode
     of false: buildProc:      proc: VNode
     prevDom: VNode
-    rootId: string
+    rootNode: Node
+    styleNode: Node
 
   var renderers: seq[Renderer]
 
-  type ChangeRootElementIdError* = ref object of CatchableError
-
   proc redraw(i: Natural, route: string) =
+    var
+      id = 0
+      css = ""
 
-    let rootId = renderers[i].rootId
+    proc currStyleClassName: string =
+      result = fmt"actim-auto-{id}"
+      inc id
 
-    type NodeId = seq[Natural]
+    proc addStyles(vnode: VNode, node: Node) =
+      let className = currStyleClassName()
+      node.setAttr("class", 
+        if "class" in vnode.attributes:
+          fmt"{node.getAttribute(""class"")} {className}"
+        else: className
+      )
 
-    proc updateStyles(vnode: VNode, prevStyles: seq[VStyle], id: NodeId) =
-      if len(vnode.styles) > 0 and vnode.styles != prevStyles:
-        if vnode.stylesNode == nil:
-          vnode.stylesNode = document.createElement("style")
-          document.head.appendChild(vnode.stylesNode)
-        vnode.stylesNode.innerHtml = ""
-        for style in vnode.styles:
-          vnode.stylesNode.innerHtml &= renderVStyle(style, pathSelector("#"&rootId, id)).cstring
+      for style in vnode.styles:
+        css &= renderVStyle(style, "."&className).cstring
 
-    proc removeEventListeners(vnode: VNode) =
+    proc removeEventListeners(vnode: VNode, node: Node) =
       if not vnode.isText:
         for ekind, handler in vnode.handlers:
-          vnode.node.removeEventListener(ekind.cstring, handler)
+          node.removeEventListener(ekind.cstring, handler)
 
-    proc update(currs, prevs: seq[VNode], parent: Node, id: NodeId)
+    proc update(currs, prevs: seq[VNode], nodes: seq[Node], parent: Node)
 
-    proc newNode(vnode: VNode, id: NodeId) =
+    proc newNode(vnode: VNode): Node =
       if vnode.isText:
-        vnode.node = document.createTextNode(vnode.text.cstring)
+        result = document.createTextNode(vnode.text.cstring)
+
       else:
-        vnode.node = document.createElement(vnode.tag.cstring)
-        vnode.updateStyles(@[], id)
+        result = document.createElement(vnode.tag.cstring)
+
         for attr, val in vnode.attributes:
-          vnode.node.setAttr(attr.cstring, val.cstring)
+          result.setAttr(attr.cstring, val.cstring)
+        
+        addStyles(vnode, result)
+
         if "value" in vnode.attributes:
-          vnode.node.value = vnode.attributes["value"].cstring
+          result.value = vnode.attributes["value"].cstring
+
         for ekind, handler in vnode.handlers:
-          vnode.node.addEventListener(ekind.cstring, handler)
-        update(vnode.childs, @[], vnode.node, id)
+          result.addEventListener(ekind.cstring, handler)
 
-    proc removeNode(vnode: VNode, parent: Node) =
-      parent.removeChild(vnode.node)
-      if not vnode.isText and vnode.stylesNode != nil:
-        document.head.removeChild(vnode.stylesNode)
+        update(vnode.childs, @[], @[], result)
 
 
-    proc update(curr, prev: VNode, parent: Node, id: NodeId, isRoot = false) =
-
-      # keep root nodes id
-      if isRoot:
-        if "id" in curr.attributes and curr.attributes["id"] != rootId:
-          raise ChangeRootElementIdError(msg: "trying to change id of root element")
-        curr.attributes["id"] = rootId
+    proc update(curr, prev: VNode, node: Node, parent: Node) =
+      unsafeEcho node
 
       # completly replace node
-      if (curr.isText xor prev.isText) or (not curr.isText and curr.tag != prev.tag):
-        newNode(curr, id)
-        parent.insertBefore(curr.node, prev.node)
-        removeEventListeners(prev)
-        removeNode(prev, parent)
+      if (curr.isText xor prev.isText) or ((not curr.isText) and curr.tag != prev.tag):
+        parent.insertBefore(newNode(curr), node)
+        removeEventListeners(prev, node)
+        parent.removeChild(node)
 
       # just update node
       else:
-        curr.node = prev.node
-
         if curr.isText:
           if curr.text != prev.text:
-            curr.node.nodeValue = curr.text.cstring
+            node.nodeValue = curr.text.cstring
 
         else:
-          curr.stylesNode = prev.stylesNode
-          curr.updateStyles(prev.styles, id)
-
           for a in prev.attributes.keys:
             if a notin curr.attributes:
-              curr.node.setAttr(a.cstring, "")
+              node.setAttr(a.cstring, "")
           for (a,v) in curr.attributes.pairs:
             if a notin prev.attributes or prev.attributes[a] != v:
-              curr.node.setAttr(a.cstring, v.cstring)
+              node.setAttr(a.cstring, v.cstring)
+
+          addStyles(curr, node)
 
           if "value" in curr.attributes:
             let value = curr.attributes["value"].cstring
-            if curr.node.value != value:
-              curr.node.value = value
+            if node.value != value:
+              node.value = value
 
           for (ekind, handler) in prev.handlers.pairs:
             if ekind notin curr.handlers or curr.handlers[ekind] != handler:
-              curr.node.removeEventListener(ekind, handler)
+              node.removeEventListener(ekind, handler)
               prev.handlers.del(ekind)
           for (ekind, handler) in curr.handlers.pairs:
             if ekind notin prev.handlers:
-              curr.node.addEventListener(ekind, handler)
+              node.addEventListener(ekind, handler)
 
-          update(curr.childs, prev.childs, curr.node, id)
+          update(curr.childs, prev.childs, node.childNodes, node)
 
-    proc update(currs, prevs: seq[VNode], parent: Node, id: NodeId) =
-      var id = id & 0
+    proc update(currs, prevs: seq[VNode], nodes: seq[Node], parent: Node) =
+      assert len(prevs) == len(nodes)
 
       let commonLen = min(len(currs), len(prevs))
 
       # update nodes
       for i in 0 ..< commonLen:
-        update(currs[i], prevs[i], parent, id)
-        inc id[^1]
+        update(currs[i], prevs[i], nodes[i], parent)
 
       # add new nodes
       if len(currs) > commonLen:
-        for curr in currs[commonLen..^1]:
-          newNode(curr, id)
-          parent.appendChild(curr.node)
-          inc id[^1]
+        for i in commonLen ..< len(currs):
+          parent.appendChild(newNode(currs[i]))
 
       # remove extra nodes
       elif len(prevs) > commonLen:
-        for prev in prevs[commonLen..^1]:
-          removeEventListeners(prev)
-          removeNode(prev, parent)
+        for prev in prevs[commonLen .. ^1]:
+          removeEventListeners(prevs[i], nodes[i])
+          parent.removeChild(nodes[commonLen])
+
 
     let dom =
       if renderers[i].routing: renderers[i].buildProcRoute(route)
       else: renderers[i].buildProc()
-    update(dom, renderers[i].prevDom, renderers[i].prevDom.node.parentNode, @[], true)
+    update(dom, renderers[i].prevDom, renderers[i].rootNode, renderers[i].rootNode.parentNode)
+    renderers[i].styleNode.innerHtml = css
     renderers[i].prevDom = dom
 
 
@@ -344,31 +347,26 @@ when defined(js):
       redraw(i, route)
 
 
-  proc newRootNode(rootId: string): VNode =
-    result = VNode(
-      isText: false,
-      node: document.getElementById(rootId)
+  proc newRenderer(rootId: string): Renderer =
+    result = Renderer(
+      prevDom: VNode(isText: false),
+      rootNode: document.getElementById(rootId),
+      styleNode: document.createElement("style")
     )
-    result.tag = ($result.node.tagName).toLowerAscii
+    result.prevDom.tag = ($result.rootNode.tagName).toLowerAscii
+    document.head.appendChild(result.styleNode)
 
   proc setRenderer*(buildProc: proc: VNode, rootId = "ROOT") =
-    renderers &= Renderer(
-      routing: false,
-      buildProc: buildProc,
-      prevDom: newRootNode(rootId),
-      rootId: rootId
-    )
+    renderers &= newRenderer(rootId)
+    renderers[^1].routing = false
+    renderers[^1].buildProc = buildProc
     redraw()
 
   proc setRenderer*(buildProc: proc(route: string): VNode, rootId = "ROOT") =
-    renderers &= Renderer(
-      routing: true,
-      buildProcRoute: buildProc,
-      prevDom: newRootNode(rootId),
-      rootId: rootId
-    )
+    renderers &= newRenderer(rootId)
+    renderers[^1].routing = true
+    renderers[^1].buildProcRoute = buildProc
     let i = high(renderers)
     window.addEventListener("hashchange") do (e: Event):
       redraw(i)
-
     redraw()

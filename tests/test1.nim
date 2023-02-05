@@ -7,7 +7,7 @@ let style1 = newVStyle:
   "padding-top": 5.px
   "background-color": "#44ffaa"
 
-echo renderVStyle(style1, pathSelector("bla", [1.Natural, 2, 0]))
+echo renderVStyle(style1, "#foo")
 
 template repeateCount(n: int, body: untyped): VNode =
   buildVNode "div":
