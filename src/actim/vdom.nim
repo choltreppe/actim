@@ -202,7 +202,6 @@ macro `+>`*(head, body: untyped) =
 
 
 when defined(js):
-  proc unsafeEcho[T](v: T) {.importjs: "console.log(#)".}
 
   type Renderer = object
     case routing: bool
@@ -263,7 +262,6 @@ when defined(js):
 
 
     proc update(curr, prev: VNode, node: Node, parent: Node) =
-      unsafeEcho node
 
       # completly replace node
       if (curr.isText xor prev.isText) or ((not curr.isText) and curr.tag != prev.tag):
@@ -318,8 +316,7 @@ when defined(js):
 
       # remove extra nodes
       elif len(prevs) > commonLen:
-        for prev in prevs[commonLen .. ^1]:
-          removeEventListeners(prevs[i], nodes[i])
+        for _ in commonLen ..< len(prevs):
           parent.removeChild(nodes[commonLen])
 
 

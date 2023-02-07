@@ -180,7 +180,6 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
       case stmnt.kind
       of nnkPrefix:
         stmnt.expectLen(3)
-        debugEcho stmnt[0].kind
         assert $stmnt[0] == "++"
         stmnt[2].expectKind(nnkStmtList)
         transformBody stmnt[2], selector & stmnt[1].strVal
@@ -239,7 +238,9 @@ func renderVStyle*(style: VStyle, baseSelector = ""): string =
     for selector, attrs in style:
       if baseSelector == "" and selector == "":
         raise EmptyStyleSelectorError(msg: "trying to render style with empty selector")
-      result &= baseSelector & selector & "{"
+      result &= baseSelector
+      if len(selector) > 0 and selector[0] notin {':', ' '}: result &= ' '
+      result &= selector & "{"
       for attr, val in attrs:
         result &= attr & ": " & val & "; "
       result &= "}\n"
