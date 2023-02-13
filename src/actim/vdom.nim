@@ -73,20 +73,15 @@ func text*(s: varargs[string, `$`]): VNode =
   for s in s:
     result.text &= s
 
-func newVNode*(
-  tag: string,
-  childs: seq[VNode] = @[],
-  styles: seq[VStyle] = @[],
-  handlers = initTable[string, EventHandler]()
-): VNode =
+func newVNode*(tag: string): VNode =
   ## Create a new vnode
-  result = VNode(isText: false, tag: tag, childs: childs, styles: styles, handlers: handlers)
+  result = VNode(isText: false, tag: tag)
 
 when defined(js):
 
   proc redraw*
 
-  macro handle*(kind, body: untyped) =
+  macro handle*(kind: string, body: untyped) =
     ## Add event handler to node
     runnableExamples:
       buildVNode input:
@@ -94,7 +89,7 @@ when defined(js):
         handle "click":
           echo vnode.attributes.value
 
-    genAst(vnode = ident"vnode", kind = macros.strVal(kind), body, event = ident"event"):
+    genAst(vnode = ident"vnode", kind, body, event = ident"event"):
       vnode.handlers[kind] = proc(event: Event) =
         preventDefault event
         body
@@ -112,9 +107,6 @@ macro style*(vstyle: VStyle | seq[VStyle]) =
   genAst(vnode = ident"vnode", vstyle):
     vnode.styles &= vstyle
 
-template style*(body: untyped) =
-  style newVStyle(body)
-
 macro attr*(a,val: untyped) =
   ## Set an attribute of node.
   runnableExamples:
@@ -122,8 +114,8 @@ macro attr*(a,val: untyped) =
       attr "href": "/"
       ++ text "home"
 
-  genAst(vnode = ident"vnode", s = macros.strVal(a), val):
-    vnode.attributes[s] = val
+  genAst(vnode = ident"vnode", a, val):
+    vnode.attributes[a] = val
 
 template buildVNode*(tag: string, body: untyped): VNode =
   ## Build a node with childs/attributes/handlers
@@ -156,11 +148,13 @@ template buildVNodes*(body: untyped): seq[VNode] =
     body
     vnode.childs
 
-template `++`*(vn: VNode) {.dirty.} =
-  if vn.isText and len(vnode.childs) > 0 and vnode.childs[^1].isText:
-    vnode.childs[^1].text &= vn.text
-  else:
-    vnode.childs &= vn
+template `++`*(vnExpr: VNode) {.dirty.} =
+  block:
+    let vn = vnExpr
+    if vn.isText and len(vnode.childs) > 0 and vnode.childs[^1].isText:
+      vnode.childs[^1].text &= vn.text
+    else:
+      vnode.childs &= vn
 
 template `++`*(vns: seq[VNode]) {.dirty.} =
   for vn in vns:
@@ -201,6 +195,15 @@ macro `+>`*(head, body: untyped) =
     vnode.childs &= genVnode
 
 
+var
+  globalStyles: seq[VStyle]
+  rendering = false
+
+proc globalStyle*(vstyle: VStyle) =
+  if rendering: raise Exception.newException("cant set a global style inside render proc")
+  globalStyles &= vstyle
+
+
 when defined(js):
 
   type Renderer = object
@@ -216,22 +219,22 @@ when defined(js):
   proc redraw(i: Natural, route: string) =
     var
       id = 0
+      styleIdLookup = initTable[seq[VStyle], int]()  # for not double defining styles
       css = ""
 
-    proc currStyleClassName: string =
-      result = fmt"actim-auto-{id}"
-      inc id
+    proc addStyles(vnode: VNode) =
+      if len(vnode.styles) > 0:
+        var className = "actim-"
+        if vnode.styles in styleIdLookup:
+          className &= $styleIdLookup[vnode.styles]
+        else:
+          className &= $id
+          styleIdLookup[vnode.styles] = id
+          for style in vnode.styles:
+            css &= renderVStyle(style, "."&className).cstring
+          inc id
 
-    proc addStyles(vnode: VNode, node: Node) =
-      let className = currStyleClassName()
-      node.setAttr("class", 
-        if "class" in vnode.attributes:
-          fmt"{node.getAttribute(""class"")} {className}"
-        else: className
-      )
-
-      for style in vnode.styles:
-        css &= renderVStyle(style, "."&className).cstring
+        vnode.attributes.mgetOrPut("class", "") &= " " & className
 
     proc removeEventListeners(vnode: VNode, node: Node) =
       if not vnode.isText:
@@ -246,11 +249,11 @@ when defined(js):
 
       else:
         result = document.createElement(vnode.tag.cstring)
+        
+        addStyles(vnode)
 
         for attr, val in vnode.attributes:
           result.setAttr(attr.cstring, val.cstring)
-        
-        addStyles(vnode, result)
 
         if "value" in vnode.attributes:
           result.value = vnode.attributes["value"].cstring
@@ -276,6 +279,8 @@ when defined(js):
             node.nodeValue = curr.text.cstring
 
         else:
+          addStyles(curr)
+
           for a in prev.attributes.keys:
             if a notin curr.attributes:
               node.setAttr(a.cstring, "")
@@ -283,12 +288,11 @@ when defined(js):
             if a notin prev.attributes or prev.attributes[a] != v:
               node.setAttr(a.cstring, v.cstring)
 
-          addStyles(curr, node)
-
-          if "value" in curr.attributes:
-            let value = curr.attributes["value"].cstring
-            if node.value != value:
-              node.value = value
+          let value =
+            if "value" in curr.attributes: curr.attributes["value"].cstring
+            else: ""
+          if node.value != value:
+            node.value = value
 
           for (ekind, handler) in prev.handlers.pairs:
             if ekind notin curr.handlers or curr.handlers[ekind] != handler:
@@ -320,9 +324,15 @@ when defined(js):
           parent.removeChild(nodes[commonLen])
 
 
+    for style in globalStyles:
+      css &= renderVStyle(style)
+
+    rendering = true
     let dom =
       if renderers[i].routing: renderers[i].buildProcRoute(route)
       else: renderers[i].buildProc()
+    rendering = false
+
     update(dom, renderers[i].prevDom, renderers[i].rootNode, renderers[i].rootNode.parentNode)
     renderers[i].styleNode.innerHtml = css
     renderers[i].prevDom = dom

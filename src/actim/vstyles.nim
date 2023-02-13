@@ -141,7 +141,7 @@ template `-`*(s: Size): Size = s * -1
 
 type
   VAttrs = OrderedTable[string, string]
-  VStyle* = OrderedTable[string, VAttrs]
+  VStyle* = OrderedTableRef[string, VAttrs]
 
 func newVAttrs: VAttrs = initOrderedTable[string, string]()
 
@@ -152,7 +152,7 @@ func toCssIdent(s: string): string =
       elif c.isUpperASCII: fmt"-{c.toLowerASCII}"
       else: $c
 
-proc setAttr(style: var VStyle, selector,attr,v: string) =
+proc setAttr(style: VStyle, selector,attr,v: string) =
   if selector notin style:
     style[selector] = newVAttrs()
   style[selector][attr.toCssIdent] = v
@@ -175,14 +175,20 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
     styleVar = genSym(nskVar, "style")
     showAttrValIdent = bindSym("showAttrVal")
 
-  proc transformBody(body: NimNode, selector = "") =
+  proc transformBody(body: NimNode, selector = newLit("")) =
     for (i, stmnt) in body.pairs:
       case stmnt.kind
       of nnkPrefix:
         stmnt.expectLen(3)
         assert $stmnt[0] == "++"
         stmnt[2].expectKind(nnkStmtList)
-        transformBody stmnt[2], selector & stmnt[1].strVal
+        let selector = genAst(selector, addSelector = stmnt[1]):
+          block:
+            var res = selector
+            if len(addSelector) > 0 and addSelector[0] notin {':', ' '}:
+              res &= ' '
+            res & addSelector
+        transformBody stmnt[2], selector
         body[i] = stmnt[2]
 
       of nnkForStmt:
@@ -196,12 +202,13 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
       else:
         stmnt.expectKind(nnkCall)
         stmnt.expectLen(2)
-        body[i] = newCall(bindSym"setAttr", styleVar, newLit(selector), stmnt[0], prefix(stmnt[1], "$"))
+        body[i] = newCall(bindSym"setAttr", styleVar, selector, stmnt[0], prefix(stmnt[1], "$"))
 
   transformBody body
 
   genAst(showAttrValIdent, extends, body, styleVar, result = ident"result"):
-    var styleVar = extends
+    var styleVar = VStyle()
+    styleVar[] = extends[]
     body
     styleVar
 
@@ -217,12 +224,13 @@ template newVStyle*(body: untyped): VStyle =
 
 proc merge(a,b: VAttrs): VAttrs =
   result = a
-  for (k, v) in b.pairs:
+  for k, v in b:
     result[k] = v
 
 proc merge*(a,b: VStyle): VStyle =
   ## Merge 2 style defenitions.
   ## If an attribute is defined in `a` and `b`, the value of `b` is used.
+  new result
   for k, v in a:
     result[k] =
       if k in b: merge(v, b[k])
@@ -238,9 +246,7 @@ func renderVStyle*(style: VStyle, baseSelector = ""): string =
     for selector, attrs in style:
       if baseSelector == "" and selector == "":
         raise EmptyStyleSelectorError(msg: "trying to render style with empty selector")
-      result &= baseSelector
-      if len(selector) > 0 and selector[0] notin {':', ' '}: result &= ' '
-      result &= selector & "{"
+      result &= fmt"{baseSelector}{selector}{{"
       for attr, val in attrs:
         result &= attr & ": " & val & "; "
       result &= "}\n"

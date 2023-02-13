@@ -13,9 +13,11 @@ requires "nim >= 1.6.4"
 requires "ajax"
 
 
+import std/strformat
+
 task test, "test":
-  exec "nim js tests/test1.nim"
-  exec "nim js tests/test2.nim"
+  for i in 1..2:
+    exec fmt"nim js -d:nimPreviewHashRef tests/test{i}.nim"
 
 task gendoc, "generate docs":
   exec "nim doc --project --backend:js --docCmd:skip -o:docs src/actim.nim"
