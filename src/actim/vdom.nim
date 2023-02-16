@@ -91,7 +91,7 @@ when defined(js):
 
     genAst(vnode = ident"vnode", kind, body, event = ident"event"):
       vnode.handlers[kind] = proc(event: Event) =
-        preventDefault event
+        #preventDefault event
         body
         redraw()
 
@@ -151,6 +151,7 @@ template buildVNodes*(body: untyped): seq[VNode] =
 template `++`*(vnExpr: VNode) {.dirty.} =
   block:
     let vn = vnExpr
+    if vn == nil: raise Exception.newException("node is nil")
     if vn.isText and len(vnode.childs) > 0 and vnode.childs[^1].isText:
       vnode.childs[^1].text &= vn.text
     else:
@@ -159,6 +160,9 @@ template `++`*(vnExpr: VNode) {.dirty.} =
 template `++`*(vns: seq[VNode]) {.dirty.} =
   for vn in vns:
     ++ vn
+
+template `++`*(vn: VNode, body: untyped) {.dirty.} =
+  ++ (extendVNode(vn, body))
 
 template `++`*(tag: string) {.dirty.} =
   ++ newVNode(tag)
@@ -210,6 +214,7 @@ when defined(js):
     case routing: bool
     of true:  buildProcRoute: proc(route: string): VNode
     of false: buildProc:      proc: VNode
+    postRenderProc: proc()
     prevDom: VNode
     rootNode: Node
     styleNode: Node
@@ -337,6 +342,9 @@ when defined(js):
     renderers[i].styleNode.innerHtml = css
     renderers[i].prevDom = dom
 
+    if renderers[i].postRenderProc != nil:
+      renderers[i].postRenderProc()
+
 
   proc getHashPart: string =
     result = $window.location.hash
@@ -354,23 +362,24 @@ when defined(js):
       redraw(i, route)
 
 
-  proc newRenderer(rootId: string): Renderer =
+  proc newRenderer(rootId: string, postRenderProc: proc()): Renderer =
     result = Renderer(
       prevDom: VNode(isText: false),
       rootNode: document.getElementById(rootId),
-      styleNode: document.createElement("style")
+      styleNode: document.createElement("style"),
+      postRenderProc: postRenderProc
     )
     result.prevDom.tag = ($result.rootNode.tagName).toLowerAscii
     document.head.appendChild(result.styleNode)
 
-  proc setRenderer*(buildProc: proc: VNode, rootId = "ROOT") =
-    renderers &= newRenderer(rootId)
+  proc setRenderer*(buildProc: proc: VNode, rootId = "ROOT", postRenderProc: proc() = nil) =
+    renderers &= newRenderer(rootId, postRenderProc)
     renderers[^1].routing = false
     renderers[^1].buildProc = buildProc
     redraw()
 
-  proc setRenderer*(buildProc: proc(route: string): VNode, rootId = "ROOT") =
-    renderers &= newRenderer(rootId)
+  proc setRenderer*(buildProc: proc(route: string): VNode, rootId = "ROOT", postRenderProc: proc() = nil) =
+    renderers &= newRenderer(rootId, postRenderProc)
     renderers[^1].routing = true
     renderers[^1].buildProcRoute = buildProc
     let i = high(renderers)
