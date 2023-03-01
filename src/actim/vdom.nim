@@ -115,7 +115,7 @@ macro attr*(a,val: untyped) =
       ++ text "home"
 
   genAst(vnode = ident"vnode", a, val):
-    vnode.attributes[a] = val
+    vnode.attributes[a] = $val
 
 template buildVNode*(tag: string, body: untyped): VNode =
   ## Build a node with childs/attributes/handlers
@@ -224,22 +224,28 @@ when defined(js):
   proc redraw(i: Natural, route: string) =
     var
       id = 0
-      styleIdLookup = initTable[seq[VStyle], int]()  # for not double defining styles
       css = ""
 
     proc addStyles(vnode: VNode) =
-      if len(vnode.styles) > 0:
-        var className = "actim-"
-        if vnode.styles in styleIdLookup:
-          className &= $styleIdLookup[vnode.styles]
-        else:
-          className &= $id
-          styleIdLookup[vnode.styles] = id
-          for style in vnode.styles:
-            css &= renderVStyle(style, "."&className).cstring
-          inc id
+      var
+        elementCss = ""
+        className = ""
 
+      for style in vnode.styles:
+        for selector, attrs in style:
+          if selector == "":
+            elementCss &= renderVAttrs(attrs)
+          else:
+            if className == "":
+              className = fmt"actim-{id}"
+            css &= renderVAttrs(attrs, "."&className, selector)
+
+      if elementCss != "":
+        vnode.attributes.mgetOrPut("style", "") &= elementCss
+
+      if className != "":
         vnode.attributes.mgetOrPut("class", "") &= " " & className
+        inc id
 
     proc removeEventListeners(vnode: VNode, node: Node) =
       if not vnode.isText:
@@ -262,6 +268,9 @@ when defined(js):
 
         if "value" in vnode.attributes:
           result.value = vnode.attributes["value"].cstring
+
+        if "checked" in vnode.attributes:
+          result.checked = parseBool(vnode.attributes["checked"])
 
         for ekind, handler in vnode.handlers:
           result.addEventListener(ekind.cstring, handler)
@@ -298,6 +307,11 @@ when defined(js):
             else: ""
           if node.value != value:
             node.value = value
+
+          if "checked" in curr.attributes:
+            let checked = parseBool(curr.attributes["checked"])
+            if node.checked != checked:
+              node.checked = checked
 
           for (ekind, handler) in prev.handlers.pairs:
             if ekind notin curr.handlers or curr.handlers[ekind] != handler:

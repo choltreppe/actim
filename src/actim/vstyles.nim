@@ -141,9 +141,9 @@ template `-`*(s: Size): Size = s * -1
 
 type
   VAttrs = OrderedTable[string, string]
-  VStyle* = OrderedTableRef[string, VAttrs]
+  VStyle* = OrderedTable[string, VAttrs]
 
-func newVAttrs: VAttrs = initOrderedTable[string, string]()
+func newVAttrs: VAttrs {.inline.} = initOrderedTable[string, string]()
 
 func toCssIdent(s: string): string =
   for c in s:
@@ -152,7 +152,7 @@ func toCssIdent(s: string): string =
       elif c.isUpperASCII: fmt"-{c.toLowerASCII}"
       else: $c
 
-proc setAttr(style: VStyle, selector,attr,v: string) =
+proc setAttr(style: var VStyle, selector,attr,v: string) =
   if selector notin style:
     style[selector] = newVAttrs()
   style[selector][attr.toCssIdent] = v
@@ -165,6 +165,12 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
   body.expectKind(nnkStmtList)
   var body = body
   while body[0].kind == nnkStmtList: body = body[0]
+
+  let isGlobal =
+    if (let p = body[0]; p.kind == nnkPragma and p[0].kind == nnkIdent and cmpIgnoreStyle(p[0].strVal, "global") == 0):
+      body.del
+      true
+    else: false
   
   func showAttrVal(vals: varargs[string, `$`]): string =
     for i, v in vals:
@@ -176,7 +182,7 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
     showAttrValIdent = bindSym("showAttrVal")
 
   proc transformBody(body: NimNode, selector = newLit("")) =
-    for (i, stmnt) in body.pairs:
+    for i, stmnt in body:
       case stmnt.kind
       of nnkPrefix:
         stmnt.expectLen(3)
@@ -206,11 +212,16 @@ macro extendVStyle*(extends: VStyle, body: untyped): VStyle =
 
   transformBody body
 
-  genAst(showAttrValIdent, extends, body, styleVar, result = ident"result"):
-    var styleVar = VStyle()
-    styleVar[] = extends[]
+  result = genAst(showAttrValIdent, extends, body, styleVar, result = ident"result"):
+    var styleVar = extends
     body
     styleVar
+
+  if isGlobal:
+    result = genAst(result):
+      let tmp {.global.} = result
+      tmp
+
 
 template newVStyle*(body: untyped): VStyle =
   ## Create a vstyle.
@@ -230,7 +241,6 @@ proc merge(a,b: VAttrs): VAttrs =
 proc merge*(a,b: VStyle): VStyle =
   ## Merge 2 style defenitions.
   ## If an attribute is defined in `a` and `b`, the value of `b` is used.
-  new result
   for k, v in a:
     result[k] =
       if k in b: merge(v, b[k])
@@ -242,11 +252,15 @@ proc merge*(a,b: VStyle): VStyle =
 
 type EmptyStyleSelectorError* = ref object of CatchableError
 
+func renderVAttrs*(attrs: VAttrs): string =
+  for attr, val in attrs:
+    result &= attr & ": " & val & "; "
+
+func renderVAttrs*(attrs: VAttrs, baseSelector, selector: string): string =
+  if baseSelector == "" and selector == "":
+    raise EmptyStyleSelectorError(msg: "trying to render style with empty selector")
+  fmt"{baseSelector}{selector}{{{renderVAttrs(attrs)}}}"
+
 func renderVStyle*(style: VStyle, baseSelector = ""): string =
-    for selector, attrs in style:
-      if baseSelector == "" and selector == "":
-        raise EmptyStyleSelectorError(msg: "trying to render style with empty selector")
-      result &= fmt"{baseSelector}{selector}{{"
-      for attr, val in attrs:
-        result &= attr & ": " & val & "; "
-      result &= "}\n"
+  for selector, attrs in style:
+    result &= renderVAttrs(attrs, baseSelector, selector) & "\n"
