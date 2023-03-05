@@ -1,2 +1,7 @@
-tests/*.js
-docs/nimcache
+*
+!*/
+!*.*
+
+*.exe
+*.flippy
+*.js

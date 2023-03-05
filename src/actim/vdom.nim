@@ -39,7 +39,8 @@ type
 
   VNode* = ref object
     case isText*: bool
-    of true: text*: string
+    of true:
+      text*: string
     else:
       tag*: string
       styles*: seq[VStyle]
@@ -226,26 +227,16 @@ when defined(js):
       id = 0
       css = ""
 
-    proc addStyles(vnode: VNode) =
-      var
-        elementCss = ""
-        className = ""
+    proc addStyles(node: Node, vnode: VNode) =
+      if "class" notin vnode.attributes:
+        vnode.attributes["class"] = ""
 
-      for style in vnode.styles:
-        for selector, attrs in style:
-          if selector == "":
-            elementCss &= renderVAttrs(attrs)
-          else:
-            if className == "":
-              className = fmt"actim-{id}"
-            css &= renderVAttrs(attrs, "."&className, selector)
-
-      if elementCss != "":
-        vnode.attributes.mgetOrPut("style", "") &= elementCss
-
-      if className != "":
-        vnode.attributes.mgetOrPut("class", "") &= " " & className
+      if len(vnode.styles) > 0:
+        let className = fmt"actim-{id}"
+        node.setAttr("class", vnode.attributes.getOrDefault("class") & " " & className)
         inc id
+        for style in vnode.styles:
+          css &= renderVStyle(style, "."&className)
 
     proc removeEventListeners(vnode: VNode, node: Node) =
       if not vnode.isText:
@@ -260,8 +251,6 @@ when defined(js):
 
       else:
         result = document.createElement(vnode.tag.cstring)
-        
-        addStyles(vnode)
 
         for attr, val in vnode.attributes:
           result.setAttr(attr.cstring, val.cstring)
@@ -271,6 +260,8 @@ when defined(js):
 
         if "checked" in vnode.attributes:
           result.checked = parseBool(vnode.attributes["checked"])
+        
+        result.addStyles(vnode)
 
         for ekind, handler in vnode.handlers:
           result.addEventListener(ekind.cstring, handler)
@@ -293,8 +284,6 @@ when defined(js):
             node.nodeValue = curr.text.cstring
 
         else:
-          addStyles(curr)
-
           for a in prev.attributes.keys:
             if a notin curr.attributes:
               node.setAttr(a.cstring, "")
@@ -312,6 +301,8 @@ when defined(js):
             let checked = parseBool(curr.attributes["checked"])
             if node.checked != checked:
               node.checked = checked
+
+          node.addStyles(curr)
 
           for (ekind, handler) in prev.handlers.pairs:
             if ekind notin curr.handlers or curr.handlers[ekind] != handler:
